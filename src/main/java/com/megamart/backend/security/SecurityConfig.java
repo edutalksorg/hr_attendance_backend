@@ -27,7 +27,8 @@ public class SecurityConfig {
 
         http.csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .anyRequest().permitAll()   // 🔥 EVERYTHING PUBLIC
+                        .requestMatchers("/api/auth/**", "/swagger-ui/**", "/v3/api-docs/**","/").permitAll()
+                        .anyRequest().authenticated()  // <-- IMPORTANT
                 )
                 .sessionManagement(sess ->
                         sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
@@ -36,6 +37,8 @@ public class SecurityConfig {
 
         return http.build();
     }
+
+
 
     @Bean
     public PasswordEncoder encoder() {
@@ -47,4 +50,20 @@ public class SecurityConfig {
             throws Exception {
         return config.getAuthenticationManager();
     }
+    @Bean
+    public org.springframework.web.servlet.config.annotation.WebMvcConfigurer corsConfigurer() {
+        return new org.springframework.web.servlet.config.annotation.WebMvcConfigurer() {
+            @Override
+            public void addCorsMappings(org.springframework.web.servlet.config.annotation.CorsRegistry registry) {
+                registry.addMapping("/**")
+                        .allowedOrigins("*")   // allow ALL devices (your phone)
+                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                        .allowedHeaders("*");
+            }
+        };
+    }
+
+
+
+
 }

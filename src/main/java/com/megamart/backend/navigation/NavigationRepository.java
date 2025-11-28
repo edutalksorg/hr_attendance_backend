@@ -6,4 +6,5 @@ import java.util.UUID;
 
 public interface NavigationRepository extends JpaRepository<NavigationLog, UUID> {
     List<NavigationLog> findByUserIdOrderByCreatedAtDesc(UUID userId);
+    List<NavigationLog> findByUserIdInOrderByCreatedAtDesc(java.util.List<UUID> userIds);
 }

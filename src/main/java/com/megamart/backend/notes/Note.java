@@ -1,18 +1,19 @@
-package com.megamart.backend.attendance;
+package com.megamart.backend.notes;
 
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "login_history")
+@Table(name = "notes")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Attendance {
+public class Note {
     @Id
     @GeneratedValue
     private UUID id;
@@ -20,19 +21,20 @@ public class Attendance {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    @Column(name = "login_time")
-    private OffsetDateTime loginTime;
+    @Column(name = "team_id")
+    private UUID teamId;
 
-    @Column(name = "logout_time")
-    private OffsetDateTime logoutTime;
+    @Column(nullable = false)
+    private String title;
 
-    @Column(name = "ip_address")
-    private String ipAddress;
-
-    @Column(name = "user_agent")
-    private String userAgent;
+    @Column(columnDefinition = "text")
+    private String body;
 
     @Builder.Default
     @Column(name = "created_at")
     private OffsetDateTime createdAt = OffsetDateTime.now();
+
+    @Builder.Default
+    @Column(name = "updated_at")
+    private OffsetDateTime updatedAt = OffsetDateTime.now();
 }

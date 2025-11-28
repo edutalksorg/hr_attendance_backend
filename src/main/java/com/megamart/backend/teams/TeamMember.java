@@ -1,36 +1,28 @@
-package com.megamart.backend.attendance;
+package com.megamart.backend.teams;
 
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "login_history")
+@Table(name = "team_members")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Attendance {
+public class TeamMember {
     @Id
     @GeneratedValue
     private UUID id;
 
+    @Column(name = "team_id", nullable = false)
+    private UUID teamId;
+
     @Column(name = "user_id", nullable = false)
     private UUID userId;
-
-    @Column(name = "login_time")
-    private OffsetDateTime loginTime;
-
-    @Column(name = "logout_time")
-    private OffsetDateTime logoutTime;
-
-    @Column(name = "ip_address")
-    private String ipAddress;
-
-    @Column(name = "user_agent")
-    private String userAgent;
 
     @Builder.Default
     @Column(name = "created_at")

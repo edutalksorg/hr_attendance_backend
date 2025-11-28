@@ -15,7 +15,7 @@ public class AttendanceController {
     private final AttendanceService attendanceService;
 
     @PostMapping("/login/{userId}")
-    @PreAuthorize("hasAnyRole('EMPLOYEE','HR','ADMIN')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','HR')")
     public ResponseEntity<Attendance> login(@PathVariable UUID userId, @RequestHeader(value="X-User-Agent", required=false) String ua, @RequestHeader(value="X-Forwarded-For", required=false) String ip) {
         String ipAddr = (ip == null) ? "unknown" : ip;
         Attendance a = attendanceService.recordLogin(userId, ipAddr, ua);
@@ -23,7 +23,7 @@ public class AttendanceController {
     }
 
     @PostMapping("/logout/{attendanceId}")
-    @PreAuthorize("hasAnyRole('EMPLOYEE','HR','ADMIN')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','HR')")
     public ResponseEntity<Attendance> logout(@PathVariable UUID attendanceId) {
         return ResponseEntity.ok(attendanceService.recordLogout(attendanceId));
     }

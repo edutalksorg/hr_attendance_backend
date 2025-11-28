@@ -1,30 +1,31 @@
-package com.megamart.backend.navigation;
+package com.megamart.backend.holidays;
 
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.OffsetDateTime;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Entity
-@Table(name = "navigation_history")
+@Table(name = "holidays")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class NavigationLog {
+public class Holiday {
     @Id
     @GeneratedValue
     private UUID id;
 
-    @Column(name = "user_id", nullable = false)
-    private UUID userId;
-
     @Column(nullable = false)
-    private String path;
+    private String name;
 
-    @Column(columnDefinition = "jsonb")
-    private String metadata;
+    @Column(name = "holiday_date", nullable = false)
+    private LocalDate holidayDate;
+
+    private String description;
 
     @Builder.Default
     @Column(name = "created_at")

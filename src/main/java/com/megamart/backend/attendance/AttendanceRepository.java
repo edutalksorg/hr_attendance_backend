@@ -6,4 +6,5 @@ import java.util.UUID;
 
 public interface AttendanceRepository extends JpaRepository<Attendance, UUID> {
     List<Attendance> findByUserIdOrderByCreatedAtDesc(UUID userId);
+    List<Attendance> findByUserIdInOrderByCreatedAtDesc(java.util.List<UUID> userIds);
 }

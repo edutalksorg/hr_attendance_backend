@@ -1,30 +1,27 @@
-package com.megamart.backend.navigation;
+package com.megamart.backend.teams;
 
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "navigation_history")
+@Table(name = "teams")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class NavigationLog {
+public class Team {
     @Id
     @GeneratedValue
     private UUID id;
 
-    @Column(name = "user_id", nullable = false)
-    private UUID userId;
-
     @Column(nullable = false)
-    private String path;
+    private String name;
 
-    @Column(columnDefinition = "jsonb")
-    private String metadata;
+    private String description;
 
     @Builder.Default
     @Column(name = "created_at")
