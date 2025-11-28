@@ -1,0 +1,39 @@
+name: Deploy to Elastic Beanstalk
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v3
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: Build with Maven
+        run: mvn clean package -DskipTests
+
+      - name: Generate deployment package (application.zip)
+        run: |
+          cd target
+          mv backend-0.0.1-SNAPSHOT.jar application.jar
+          zip ../application.zip application.jar
+
+      - name: Deploy to Elastic Beanstalk
+        uses: einaregilsson/beanstalk-deploy@v21
+        with:
+          aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          region: ap-south-1
+          application_name: Hr_Attendance_backend_application
+          environment_name: HrAttendancebackendapplication-env
+          version_label: github-${{ github.run_number }}
+          deployment_package: application.zip
