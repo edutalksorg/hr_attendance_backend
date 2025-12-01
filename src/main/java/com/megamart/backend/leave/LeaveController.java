@@ -25,23 +25,24 @@ public class LeaveController {
     private final UserRepository userRepository;
 
     public static record RequestLeaveReq(
-        @NotBlank String leaveType,
-        @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-        @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
-        String reason
-    ) {}
+            @NotBlank String leaveType,
+            @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            String reason) {
+    }
 
     @PostMapping("/request")
-    @PreAuthorize("hasAnyRole('EMPLOYEE','MARKETING_EXECUTIVE','HR')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','MARKETING_EXECUTIVE','HR','ADMIN')")
     public ResponseEntity<LeaveRequestDto> requestLeave(@RequestBody RequestLeaveReq req) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
-        LeaveRequest lr = service.requestLeave(user.getId(), req.leaveType(), req.startDate(), req.endDate(), req.reason());
+        LeaveRequest lr = service.requestLeave(user.getId(), req.leaveType(), req.startDate(), req.endDate(),
+                req.reason());
         return ResponseEntity.status(201).body(toDto(lr));
     }
 
     @GetMapping("/my-requests")
-    @PreAuthorize("hasAnyRole('EMPLOYEE','MARKETING_EXECUTIVE','HR')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','MARKETING_EXECUTIVE','HR','ADMIN')")
     public ResponseEntity<List<LeaveRequestDto>> getMyLeaveRequests() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));

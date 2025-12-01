@@ -19,31 +19,40 @@ public class UserService {
         if (userRepository.existsByEmail(email)) {
             throw new RuntimeException("Email already exists");
         }
+
+        // Check if this is the first user - make them admin
+        boolean isFirstUser = userRepository.count() == 0;
+
         User u = User.builder()
                 .fullName(fullName)
                 .email(email)
                 .phone(phone)
                 .password(encoder.encode(rawPassword))
-                .role(UserRole.EMPLOYEE)
-                .status(UserStatus.PENDING)
+                .role(isFirstUser ? UserRole.ADMIN : UserRole.EMPLOYEE)
+                .status(isFirstUser ? UserStatus.ACTIVE : UserStatus.PENDING)
                 .createdAt(OffsetDateTime.now())
                 .build();
         userRepository.save(u);
 
-        // create an approval entry
-        Approval ap = Approval.builder()
-                .targetUserId(u.getId())
-                .approvalType("REGISTRATION")
-                .status("PENDING")
-                .createdAt(OffsetDateTime.now())
-                .build();
-        approvalRepository.save(ap);
+        // Only create approval entry for non-admin users
+        if (!isFirstUser) {
+            Approval ap = Approval.builder()
+                    .targetUserId(u.getId())
+                    .approvalType("REGISTRATION")
+                    .status("PENDING")
+                    .createdAt(OffsetDateTime.now())
+                    .build();
+            approvalRepository.save(ap);
+        }
+
         return u;
     }
 
-    public List<User> listAll() { return userRepository.findAll(); }
+    public List<User> listAll() {
+        return userRepository.findAll();
+    }
 
-    public User findByEmail(String email){
+    public User findByEmail(String email) {
         return userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
     }
 
@@ -68,6 +77,12 @@ public class UserService {
     public void blockUser(UUID userId) {
         User u = userRepository.findById(userId).orElseThrow();
         u.setStatus(UserStatus.BLOCKED);
+        userRepository.save(u);
+    }
+
+    public void unblockUser(UUID userId) {
+        User u = userRepository.findById(userId).orElseThrow();
+        u.setStatus(UserStatus.ACTIVE);
         userRepository.save(u);
     }
 }

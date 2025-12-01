@@ -27,13 +27,13 @@ public class AdminController {
     private final UserRepository userRepository;
 
     @GetMapping("/attendance/user/{userId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('HR')")
     public ResponseEntity<List<Attendance>> attendanceForUser(@PathVariable UUID userId) {
         return ResponseEntity.ok(attendanceRepository.findByUserIdOrderByCreatedAtDesc(userId));
     }
 
     @GetMapping("/attendance/all")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('HR')")
     public ResponseEntity<List<Attendance>> allAttendance() {
         return ResponseEntity.ok(attendanceRepository.findAll());
     }
@@ -43,7 +43,8 @@ public class AdminController {
     public ResponseEntity<List<Attendance>> hrTeamHistory() {
         List<User> hrUsers = userRepository.findByRole(com.megamart.backend.user.UserRole.HR);
         List<UUID> ids = hrUsers.stream().map(User::getId).collect(Collectors.toList());
-        if (ids.isEmpty()) return ResponseEntity.ok(Collections.emptyList());
+        if (ids.isEmpty())
+            return ResponseEntity.ok(Collections.emptyList());
         return ResponseEntity.ok(attendanceRepository.findByUserIdInOrderByCreatedAtDesc(ids));
     }
 
@@ -52,12 +53,13 @@ public class AdminController {
     public ResponseEntity<List<NavigationLog>> marketingNavigationHistory() {
         List<User> mUsers = userRepository.findByRole(com.megamart.backend.user.UserRole.MARKETING_EXECUTIVE);
         List<UUID> ids = mUsers.stream().map(User::getId).collect(Collectors.toList());
-        if (ids.isEmpty()) return ResponseEntity.ok(Collections.emptyList());
+        if (ids.isEmpty())
+            return ResponseEntity.ok(Collections.emptyList());
         return ResponseEntity.ok(navigationRepository.findByUserIdInOrderByCreatedAtDesc(ids));
     }
 
     @GetMapping("/notifications/user/{userId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('HR')")
     public ResponseEntity<List<Notification>> notificationsForUser(@PathVariable UUID userId) {
         return ResponseEntity.ok(notificationRepository.findByUserIdOrderByCreatedAtDesc(userId));
     }

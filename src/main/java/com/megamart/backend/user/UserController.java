@@ -15,7 +15,7 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping("/all")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('HR')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('HR') or hasRole('EMPLOYEE')")
 
     public ResponseEntity<List<User>> allUsers() {
         return ResponseEntity.ok(userService.listAll());
@@ -24,22 +24,30 @@ public class UserController {
     @PostMapping("/approve/{targetId}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('HR')")
     public ResponseEntity<User> approve(@PathVariable("targetId") UUID target,
-                                        @RequestParam("role") UserRole role,
-                                        @RequestParam("approverId") UUID approverId) {
+            @RequestParam("role") UserRole role,
+            @RequestParam("approverId") UUID approverId) {
         User u = userService.approveUser(approverId, target, role);
         return ResponseEntity.ok(u);
     }
 
     @PostMapping("/block/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('HR')")
     public ResponseEntity<Void> block(@PathVariable UUID id) {
         userService.blockUser(id);
         return ResponseEntity.ok().build();
     }
 
-    @GetMapping("/me")
-    public ResponseEntity<User> me(@RequestHeader("Authorization") String auth) {
-        // actual security filter will populate authentication; for simplicity, use SecurityContext in real flow
+    @PostMapping("/unblock/{id}")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('HR')")
+    public ResponseEntity<Void> unblock(@PathVariable UUID id) {
+        userService.unblockUser(id);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<User> me() {
+        String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication()
+                .getName();
+        return ResponseEntity.ok(userService.findByEmail(email));
     }
 }

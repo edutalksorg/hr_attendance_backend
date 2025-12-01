@@ -25,6 +25,7 @@ public class User {
 
     private String phone;
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     @Column(name = "password_hash", nullable = false)
     private String password;
 

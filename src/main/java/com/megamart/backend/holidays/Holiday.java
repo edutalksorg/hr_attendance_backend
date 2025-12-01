@@ -7,6 +7,8 @@ import java.time.OffsetDateTime;
 import java.time.LocalDate;
 import java.util.UUID;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+
 @Entity
 @Table(name = "holidays")
 @Getter
@@ -23,6 +25,7 @@ public class Holiday {
     private String name;
 
     @Column(name = "holiday_date", nullable = false)
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     private LocalDate holidayDate;
 
     private String description;

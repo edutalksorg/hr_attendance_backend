@@ -26,11 +26,21 @@ public class AuthService {
     // ----------------------------------------------
     public AuthResponse register(RegisterRequest req) {
 
+        UserRole role = UserRole.EMPLOYEE;
+        if (req.getRole() != null && !req.getRole().isEmpty()) {
+            try {
+                role = UserRole.valueOf(req.getRole().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                // Default to EMPLOYEE if invalid role
+                role = UserRole.EMPLOYEE;
+            }
+        }
+
         User user = User.builder()
                 .fullName(req.getFullName())
                 .email(req.getEmail())
                 .password(passwordEncoder.encode(req.getPassword()))
-                .role(UserRole.EMPLOYEE)
+                .role(role)
                 .status(UserStatus.PENDING)
                 .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())
@@ -38,9 +48,14 @@ public class AuthService {
                 .build();
 
         userRepository.save(user);
-        
+
         // Auto-create user profile
         profileService.createProfile(user.getId());
+
+        // Do not generate tokens if user is pending
+        if (user.getStatus() == UserStatus.PENDING) {
+            return new AuthResponse(null, null);
+        }
 
         String access = jwtService.generateToken(user);
         String refresh = createRefreshToken(user);
@@ -58,6 +73,18 @@ public class AuthService {
 
         if (!passwordEncoder.matches(req.getPassword(), user.getPassword())) {
             throw new RuntimeException("Invalid credentials");
+        }
+
+        if (user.getStatus() == UserStatus.PENDING) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN,
+                    "Account is pending approval. Please wait for admin approval.");
+        }
+
+        if (user.getStatus() == UserStatus.BLOCKED) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN,
+                    "Account is blocked. Please contact administrator.");
         }
 
         // Do not record last login/IP for ADMIN users per requirements
@@ -81,7 +108,8 @@ public class AuthService {
         RefreshToken r = refreshTokenRepository.findByToken(refreshToken)
                 .orElseThrow(() -> new RuntimeException("Invalid refresh token"));
 
-        if (r.isRevoked()) throw new RuntimeException("Token revoked");
+        if (r.isRevoked())
+            throw new RuntimeException("Token revoked");
 
         if (r.getExpiresAt().isBefore(OffsetDateTime.now())) {
             throw new RuntimeException("Refresh token expired");

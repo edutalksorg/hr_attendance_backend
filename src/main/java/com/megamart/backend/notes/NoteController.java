@@ -17,8 +17,11 @@ import java.util.UUID;
 public class NoteController {
     private final NoteService service;
 
-    public static record CreateReq(@NotNull UUID userId, UUID teamId, @NotBlank String title, String body) {}
-    public static record UpdateReq(@NotBlank String title, String body) {}
+    public static record CreateReq(@NotNull UUID userId, UUID teamId, @NotBlank String title, String body) {
+    }
+
+    public static record UpdateReq(@NotBlank String title, String body) {
+    }
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE')")
@@ -28,21 +31,32 @@ public class NoteController {
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE')")
-    public ResponseEntity<Note> get(@PathVariable UUID id) { return ResponseEntity.ok(service.get(id)); }
+    public ResponseEntity<Note> get(@PathVariable UUID id) {
+        return ResponseEntity.ok(service.get(id));
+    }
 
     @GetMapping("/user/{userId}")
     @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE')")
-    public ResponseEntity<List<Note>> listForUser(@PathVariable UUID userId) { return ResponseEntity.ok(service.listForUser(userId)); }
+    public ResponseEntity<List<Note>> listForUser(@PathVariable UUID userId) {
+        return ResponseEntity.ok(service.listForUser(userId));
+    }
 
     @GetMapping("/team/{teamId}")
     @PreAuthorize("hasAnyRole('ADMIN','HR')")
-    public ResponseEntity<List<Note>> listForTeam(@PathVariable UUID teamId) { return ResponseEntity.ok(service.listForTeam(teamId)); }
+    public ResponseEntity<List<Note>> listForTeam(@PathVariable UUID teamId) {
+        return ResponseEntity.ok(service.listForTeam(teamId));
+    }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE')")
-    public ResponseEntity<Note> update(@PathVariable UUID id, @Valid @RequestBody UpdateReq req) { return ResponseEntity.ok(service.update(id, req.title(), req.body())); }
+    public ResponseEntity<Note> update(@PathVariable UUID id, @Valid @RequestBody UpdateReq req) {
+        return ResponseEntity.ok(service.update(id, req.title(), req.body()));
+    }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR')")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) { service.delete(id); return ResponseEntity.ok().build(); }
+    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE')")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        service.delete(id);
+        return ResponseEntity.ok().build();
+    }
 }

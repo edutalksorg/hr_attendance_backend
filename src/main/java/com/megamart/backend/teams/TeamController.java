@@ -17,9 +17,14 @@ import java.util.UUID;
 public class TeamController {
     private final TeamService service;
 
-    public static record CreateReq(@NotBlank String name, String description) {}
-    public static record UpdateReq(@NotBlank String name, String description) {}
-    public static record AddMemberReq(@NotNull UUID userId) {}
+    public static record CreateReq(@NotBlank String name, String description) {
+    }
+
+    public static record UpdateReq(@NotBlank String name, String description) {
+    }
+
+    public static record AddMemberReq(@NotNull UUID userId) {
+    }
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN','HR')")
@@ -28,30 +33,46 @@ public class TeamController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE')")
-    public ResponseEntity<Team> get(@PathVariable UUID id) { return ResponseEntity.ok(service.get(id)); }
+    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
+    public ResponseEntity<Team> get(@PathVariable UUID id) {
+        return ResponseEntity.ok(service.get(id));
+    }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','HR')")
-    public ResponseEntity<List<Team>> list() { return ResponseEntity.ok(service.list()); }
+    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
+    public ResponseEntity<List<Team>> list() {
+        return ResponseEntity.ok(service.list());
+    }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','HR')")
-    public ResponseEntity<Team> update(@PathVariable UUID id, @Valid @RequestBody UpdateReq req) { return ResponseEntity.ok(service.update(id, req.name(), req.description())); }
+    public ResponseEntity<Team> update(@PathVariable UUID id, @Valid @RequestBody UpdateReq req) {
+        return ResponseEntity.ok(service.update(id, req.name(), req.description()));
+    }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','HR')")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) { service.delete(id); return ResponseEntity.ok().build(); }
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        service.delete(id);
+        return ResponseEntity.ok().build();
+    }
 
     @PostMapping("/{id}/members")
     @PreAuthorize("hasAnyRole('ADMIN','HR')")
-    public ResponseEntity<TeamMember> addMember(@PathVariable UUID id, @Valid @RequestBody AddMemberReq req) { return ResponseEntity.status(201).body(service.addMember(id, req.userId())); }
+    public ResponseEntity<TeamMember> addMember(@PathVariable UUID id, @Valid @RequestBody AddMemberReq req) {
+        return ResponseEntity.status(201).body(service.addMember(id, req.userId()));
+    }
 
     @GetMapping("/{id}/members")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE')")
-    public ResponseEntity<List<TeamMember>> members(@PathVariable UUID id) { return ResponseEntity.ok(service.membersForTeam(id)); }
+    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
+    public ResponseEntity<List<TeamMember>> members(@PathVariable UUID id) {
+        return ResponseEntity.ok(service.membersForTeam(id));
+    }
 
     @DeleteMapping("/members/{memberId}")
     @PreAuthorize("hasAnyRole('ADMIN','HR')")
-    public ResponseEntity<Void> removeMember(@PathVariable UUID memberId) { service.removeMember(memberId); return ResponseEntity.ok().build(); }
+    public ResponseEntity<Void> removeMember(@PathVariable UUID memberId) {
+        service.removeMember(memberId);
+        return ResponseEntity.ok().build();
+    }
 }

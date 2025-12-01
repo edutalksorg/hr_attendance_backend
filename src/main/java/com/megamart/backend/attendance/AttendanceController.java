@@ -16,7 +16,9 @@ public class AttendanceController {
 
     @PostMapping("/login/{userId}")
     @PreAuthorize("hasAnyRole('EMPLOYEE','HR')")
-    public ResponseEntity<Attendance> login(@PathVariable UUID userId, @RequestHeader(value="X-User-Agent", required=false) String ua, @RequestHeader(value="X-Forwarded-For", required=false) String ip) {
+    public ResponseEntity<Attendance> login(@PathVariable UUID userId,
+            @RequestHeader(value = "X-User-Agent", required = false) String ua,
+            @RequestHeader(value = "X-Forwarded-For", required = false) String ip) {
         String ipAddr = (ip == null) ? "unknown" : ip;
         Attendance a = attendanceService.recordLogin(userId, ipAddr, ua);
         return ResponseEntity.ok(a);
@@ -29,7 +31,7 @@ public class AttendanceController {
     }
 
     @GetMapping("/history/{userId}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE')")
     public ResponseEntity<List<Attendance>> history(@PathVariable UUID userId) {
         return ResponseEntity.ok(attendanceService.getHistory(userId));
     }
