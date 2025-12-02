@@ -8,7 +8,7 @@ WHERE email = 'hr@megamart.com';
 
 -- Restore Marketing Executive role
 UPDATE users 
-SET role = 'MARKETING_EXECUTIVE'
+SET role = 'MARKETING'
 WHERE email = 'marketing@megamart.com';
 
 -- Verify the fix

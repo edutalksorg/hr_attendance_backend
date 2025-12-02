@@ -1,9 +1,12 @@
 package com.megamart.backend.auth;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -12,16 +15,28 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest req) {
-        AuthResponse resp = authService.register(req);
-        return ResponseEntity.ok(resp);
+    public ResponseEntity<ApiResponse> register(@Valid @RequestBody RegisterRequest req) {
+        authService.register(req);
+        return ResponseEntity.ok(new ApiResponse("User registered successfully — waiting for approval"));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@RequestBody AuthRequest req, HttpServletRequest request) {
+    public ResponseEntity<?> login(@Valid @RequestBody AuthRequest req, HttpServletRequest request) {
         String ip = request.getRemoteAddr();
-        AuthResponse resp = authService.login(req, ip);
-        return ResponseEntity.ok(resp);
+        try {
+            AuthResponse resp = authService.login(req, ip);
+            return ResponseEntity.ok(resp);
+        } catch (ResponseStatusException ex) {
+            if (ex.getStatusCode() == HttpStatus.UNAUTHORIZED) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(new ApiResponse(ex.getReason()));
+            }
+            if (ex.getStatusCode() == HttpStatus.FORBIDDEN) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new ApiResponse(ex.getReason()));
+            }
+            throw ex;
+        }
     }
 
     @PostMapping("/refresh")

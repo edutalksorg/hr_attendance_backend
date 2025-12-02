@@ -12,7 +12,7 @@ WHERE email = 'hr@megamart.com';
 
 -- Fix Marketing Executive user
 UPDATE users 
-SET role = 'MARKETING_EXECUTIVE', status = 'ACTIVE'
+SET role = 'MARKETING', status = 'ACTIVE'
 WHERE email = 'marketing@megamart.com';
 
 -- Set all other users to EMPLOYEE if they don't have a role

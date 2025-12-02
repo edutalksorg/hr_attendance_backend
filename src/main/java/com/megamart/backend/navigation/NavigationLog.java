@@ -23,7 +23,7 @@ public class NavigationLog {
     @Column(nullable = false)
     private String path;
 
-    @Column(columnDefinition = "jsonb")
+    @Column(columnDefinition = "text")
     private String metadata;
 
     @Builder.Default

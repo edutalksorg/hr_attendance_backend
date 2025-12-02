@@ -51,7 +51,7 @@ public class AdminController {
     @GetMapping("/navigation/marketing")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<NavigationLog>> marketingNavigationHistory() {
-        List<User> mUsers = userRepository.findByRole(com.megamart.backend.user.UserRole.MARKETING_EXECUTIVE);
+        List<User> mUsers = userRepository.findByRole(com.megamart.backend.user.UserRole.MARKETING);
         List<UUID> ids = mUsers.stream().map(User::getId).collect(Collectors.toList());
         if (ids.isEmpty())
             return ResponseEntity.ok(Collections.emptyList());

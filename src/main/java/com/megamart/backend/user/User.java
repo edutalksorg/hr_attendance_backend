@@ -30,10 +30,12 @@ public class User {
     private String password;
 
     @Enumerated(EnumType.STRING)
-    private UserRole role;
+    @Builder.Default
+    private UserRole role = UserRole.EMPLOYEE;
 
     @Enumerated(EnumType.STRING)
-    private UserStatus status;
+    @Builder.Default
+    private UserStatus status = UserStatus.PENDING;
 
     @Builder.Default
     @Column(name = "created_at", nullable = false)

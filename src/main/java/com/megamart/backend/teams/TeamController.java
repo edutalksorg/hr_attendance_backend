@@ -33,13 +33,13 @@ public class TeamController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING')")
     public ResponseEntity<Team> get(@PathVariable UUID id) {
         return ResponseEntity.ok(service.get(id));
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING')")
     public ResponseEntity<List<Team>> list() {
         return ResponseEntity.ok(service.list());
     }
@@ -64,7 +64,7 @@ public class TeamController {
     }
 
     @GetMapping("/{id}/members")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING')")
     public ResponseEntity<List<TeamMember>> members(@PathVariable UUID id) {
         return ResponseEntity.ok(service.membersForTeam(id));
     }

@@ -8,7 +8,7 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
-        CREATE TYPE user_role AS ENUM ('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE');
+        CREATE TYPE user_role AS ENUM ('ADMIN','HR','EMPLOYEE','MARKETING');
     END IF;
 END$$;
 
@@ -16,7 +16,7 @@ END$$;
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_status') THEN
-        CREATE TYPE user_status AS ENUM ('PENDING','ACTIVE','INACTIVE','BLOCKED');
+        CREATE TYPE user_status AS ENUM ('PENDING','ACTIVE','BLOCKED');
     END IF;
 END$$;
 

@@ -32,7 +32,7 @@ public class LeaveController {
     }
 
     @PostMapping("/request")
-    @PreAuthorize("hasAnyRole('EMPLOYEE','MARKETING_EXECUTIVE','HR','ADMIN')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','MARKETING','HR','ADMIN')")
     public ResponseEntity<LeaveRequestDto> requestLeave(@RequestBody RequestLeaveReq req) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
@@ -42,7 +42,7 @@ public class LeaveController {
     }
 
     @GetMapping("/my-requests")
-    @PreAuthorize("hasAnyRole('EMPLOYEE','MARKETING_EXECUTIVE','HR','ADMIN')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','MARKETING','HR','ADMIN')")
     public ResponseEntity<List<LeaveRequestDto>> getMyLeaveRequests() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
@@ -58,7 +58,7 @@ public class LeaveController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('EMPLOYEE','MARKETING_EXECUTIVE','HR','ADMIN')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','MARKETING','HR','ADMIN')")
     public ResponseEntity<LeaveRequestDto> getLeaveRequest(@PathVariable UUID id) {
         LeaveRequest lr = service.getLeaveRequest(id);
         return ResponseEntity.ok(toDto(lr));

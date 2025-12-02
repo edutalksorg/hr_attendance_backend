@@ -16,6 +16,7 @@ import java.util.UUID;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final com.megamart.backend.user.ApprovalRepository approvalRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
@@ -24,24 +25,39 @@ public class AuthService {
     // ----------------------------------------------
     // REGISTER
     // ----------------------------------------------
-    public AuthResponse register(RegisterRequest req) {
+    public void register(RegisterRequest req) {
 
-        UserRole role = UserRole.EMPLOYEE;
-        if (req.getRole() != null && !req.getRole().isEmpty()) {
+        // Validate role: if empty -> default EMPLOYEE. If provided and invalid -> BAD_REQUEST
+        UserRole role;
+        if (req.getRole() == null || req.getRole().isBlank()) {
+            role = UserRole.EMPLOYEE;
+        } else {
             try {
                 role = UserRole.valueOf(req.getRole().toUpperCase());
             } catch (IllegalArgumentException e) {
-                // Default to EMPLOYEE if invalid role
-                role = UserRole.EMPLOYEE;
+                throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.BAD_REQUEST,
+                        "Invalid role"
+                );
             }
         }
+
+        if (userRepository.existsByEmail(req.getEmail())) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.CONFLICT,
+                "Email already exists"
+            );
+        }
+
+        boolean isFirstUser = userRepository.count() == 0;
 
         User user = User.builder()
                 .fullName(req.getFullName())
                 .email(req.getEmail())
                 .password(passwordEncoder.encode(req.getPassword()))
-                .role(role)
-                .status(UserStatus.PENDING)
+            // if this is the very first user in empty DB, grant ADMIN and ACTIVE
+            .role(isFirstUser ? UserRole.ADMIN : role)
+            .status(isFirstUser ? UserStatus.ACTIVE : UserStatus.PENDING)
                 .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())
                 .locationJson(null)
@@ -52,15 +68,19 @@ public class AuthService {
         // Auto-create user profile
         profileService.createProfile(user.getId());
 
-        // Do not generate tokens if user is pending
-        if (user.getStatus() == UserStatus.PENDING) {
-            return new AuthResponse(null, null);
+        // Only create an approval entry for non-admin users (first user or admin do not require approval)
+        if (!isFirstUser && user.getStatus() == UserStatus.PENDING) {
+            com.megamart.backend.user.Approval ap = com.megamart.backend.user.Approval.builder()
+                    .targetUserId(user.getId())
+                    .approvalType("REGISTRATION")
+                    .status("PENDING")
+                    .createdAt(OffsetDateTime.now())
+                    .build();
+            approvalRepository.save(ap);
         }
 
-        String access = jwtService.generateToken(user);
-        String refresh = createRefreshToken(user);
-
-        return new AuthResponse(access, refresh);
+        // Do not generate tokens when registering. Controller will return a message.
+        return;
     }
 
     // ----------------------------------------------
@@ -77,8 +97,8 @@ public class AuthService {
 
         if (user.getStatus() == UserStatus.PENDING) {
             throw new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.FORBIDDEN,
-                    "Account is pending approval. Please wait for admin approval.");
+                org.springframework.http.HttpStatus.UNAUTHORIZED,
+                "Account pending approval");
         }
 
         if (user.getStatus() == UserStatus.BLOCKED) {

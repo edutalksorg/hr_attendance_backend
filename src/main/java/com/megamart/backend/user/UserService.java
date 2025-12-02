@@ -74,6 +74,14 @@ public class UserService {
         return t;
     }
 
+    public boolean canApprove(UserRole approver, UserRole target) {
+        if (approver == UserRole.ADMIN) return true;
+        if (approver == UserRole.HR) {
+            return target == UserRole.EMPLOYEE || target == UserRole.MARKETING;
+        }
+        return false;
+    }
+
     public void blockUser(UUID userId) {
         User u = userRepository.findById(userId).orElseThrow();
         u.setStatus(UserStatus.BLOCKED);

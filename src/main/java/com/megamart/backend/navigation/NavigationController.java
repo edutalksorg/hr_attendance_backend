@@ -14,7 +14,7 @@ public class NavigationController {
     private final NavigationService service;
 
     @PostMapping("/log")
-    @PreAuthorize("hasRole('MARKETING_EXECUTIVE')")
+    @PreAuthorize("hasRole('MARKETING')")
     public ResponseEntity<NavigationLog> log(@RequestParam UUID userId, @RequestParam String path, @RequestParam(required=false) String metadata) {
         return ResponseEntity.ok(service.log(userId, path, metadata));
     }

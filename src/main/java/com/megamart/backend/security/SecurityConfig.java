@@ -74,7 +74,7 @@ public class SecurityConfig {
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .allowedHeaders("*")
                         .exposedHeaders("Authorization")      // allow JWT access
-                        .allowCredentials(false);              // disable cookie auth
+                        .allowCredentials(true);              // allow cookie / credential usage from trusted origins
             }
         };
     }
