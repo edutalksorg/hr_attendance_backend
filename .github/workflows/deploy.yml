@@ -1,41 +1,73 @@
-name: Deploy to Elastic Beanstalk
+name: Deploy Backend to EC2
 
 on:
-  workflow_dispatch:
   push:
     branches:
-      - main
+      - main    # deploy only when main branch updates
+
+  workflow_dispatch:   # allow manual trigger
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source
+      - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Set up JDK 21
+      - name: Set up Java
         uses: actions/setup-java@v3
         with:
-          java-version: "21"
-          distribution: "temurin"
+          distribution: temurin
+          java-version: '21'
 
-      - name: Build with Maven
+      - name: Build JAR
         run: mvn clean package -DskipTests
 
-      - name: Generate deployment package (application.zip)
+      - name: Prepare version label
+        id: version
         run: |
-          cd target
-          mv backend-0.0.1-SNAPSHOT.jar application.jar
-          zip ../application.zip application.jar
+          VERSION="build-${GITHUB_RUN_NUMBER}"
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Deploy to Elastic Beanstalk
-        uses: einaregilsson/beanstalk-deploy@v21
-        with:
-          aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          region: ap-south-1
-          application_name: Hr_Attendance_backend_application
-          environment_name: HrAttendancebackendapplication-env
-          version_label: github-${{ github.run_number }}
-          deployment_package: application.zip
+      - name: Copy JAR to EC2 and store version
+        env:
+          EC2_IP: ${{ secrets.EC2_IP }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          echo "$EC2_SSH_KEY" > key.pem
+          chmod 600 key.pem
+
+          VERSION=${{ steps.version.outputs.VERSION }}
+
+          # Create version folder on EC2
+          ssh -o StrictHostKeyChecking=no -i key.pem ubuntu@$EC2_IP "mkdir -p /home/ubuntu/deployments/$VERSION"
+
+          # Copy built JAR to version folder
+          scp -o StrictHostKeyChecking=no -i key.pem target/backend-0.0.1-SNAPSHOT.jar ubuntu@$EC2_IP:/home/ubuntu/deployments/$VERSION/app.jar
+
+      - name: Restart backend with new version
+        env:
+          EC2_IP: ${{ secrets.EC2_IP }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          echo "$EC2_SSH_KEY" > key.pem
+          chmod 600 key.pem
+
+          VERSION=${{ steps.version.outputs.VERSION }}
+
+          ssh -o StrictHostKeyChecking=no -i key.pem ubuntu@$EC2_IP << 'EOF'
+            # Stop if running
+            sudo systemctl stop hr-backend || true
+
+            # Update active deployment symlink
+            sudo rm -f /home/ubuntu/app
+            sudo ln -s /home/ubuntu/deployments/${VERSION} /home/ubuntu/app
+
+            # restart service
+            sudo systemctl start hr-backend
+          EOF
+
+      - name: Confirm deployment
+        run: |
+          echo "🚀 Deployment completed using version -> ${{ steps.version.outputs.VERSION }}"
