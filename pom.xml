@@ -96,6 +96,12 @@
             <version>${springdoc.version}</version>
         </dependency>
 
+        <!-- Actuator for health check -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -118,7 +124,7 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- H2 in-memory for local/dev quick testing -->
+        <!-- H2 for local testing -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
@@ -130,7 +136,7 @@
     <build>
         <plugins>
 
-            <!-- Ensure Java 21 -->
+            <!-- Java 21 -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -140,7 +146,7 @@
                 </configuration>
             </plugin>
 
-            <!-- Spring Boot Plugin (IMPORTANT) -->
+            <!-- Spring Boot Plugin -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
