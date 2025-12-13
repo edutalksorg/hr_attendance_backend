@@ -1,0 +1,64 @@
+
+name: Deploy Backend to EC2
+
+on:
+  push:
+    branches:
+      - main    # deploy only when main branch updates
+
+  workflow_dispatch:   # allow manual trigger
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Build JAR
+        run: mvn clean package -DskipTests
+
+      - name: Prepare version label
+        id: version
+        run: |
+          VERSION="build-${GITHUB_RUN_NUMBER}"
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+      - name: Copy JAR to EC2 and store version
+        env:
+          EC2_IP: ${{ secrets.EC2_IP }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          echo "$EC2_SSH_KEY" > key.pem
+          chmod 600 key.pem
+          VERSION=${{ steps.version.outputs.VERSION }}
+          # Create version folder on EC2
+          ssh -o StrictHostKeyChecking=no -i key.pem ubuntu@$EC2_IP "mkdir -p /home/ubuntu/deployments/$VERSION"
+          # Copy built JAR to version folder
+          scp -o StrictHostKeyChecking=no -i key.pem target/backend-0.0.1-SNAPSHOT.jar ubuntu@$EC2_IP:/home/ubuntu/deployments/$VERSION/app.jar
+      - name: Restart backend with new version
+        env:
+          EC2_IP: ${{ secrets.EC2_IP }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          echo "$EC2_SSH_KEY" > key.pem
+          chmod 600 key.pem
+          VERSION=${{ steps.version.outputs.VERSION }}
+          ssh -o StrictHostKeyChecking=no -i key.pem ubuntu@$EC2_IP << 'EOF'
+            # Stop if running
+            sudo systemctl stop hr-backend || true
+            # Update active deployment symlink
+            sudo rm -f /home/ubuntu/app
+            sudo ln -s /home/ubuntu/deployments/${VERSION} /home/ubuntu/app
+            # restart service
+            sudo systemctl start hr-backend
+          EOF
+      - name: Confirm deployment
+        run: |
+          echo "🚀 Deployment completed using version -> ${{ steps.version.outputs.VERSION }}"
