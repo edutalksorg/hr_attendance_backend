@@ -38,8 +38,10 @@ public class Approval {
     private String reason;
 
     @Column(name = "created_at")
+    @Builder.Default
     private OffsetDateTime createdAt = OffsetDateTime.now();
 
+    @Builder.Default
     @Column(name = "updated_at")
     private OffsetDateTime updatedAt = OffsetDateTime.now();
 }

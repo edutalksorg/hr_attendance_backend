@@ -4,10 +4,10 @@ import com.megamart.backend.user.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -19,20 +19,22 @@ import java.util.Map;
 public class JwtService {
 
     // keep this secret in application.yml or environment for production
-    private static final String SECRET_KEY =
-            "b7f13d49a23c4efc9e57df3d2f82ac9e1d67c3a8e935bbfa4c62872cd64fb812";
+    private static final String SECRET_KEY = "3d37344554635ca43962cc00ccfb05379ac06ac938b94d03eeb3447f6ca025c9";
 
     private Key getSignKey() {
-        // decode hex to bytes via base64 wrapper (works fine here)
-        return Keys.hmacShaKeyFor(Decoders.BASE64.decode(toBase64(SECRET_KEY)));
+        return Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8));
     }
 
-    private String toBase64(String hex) {
-        return java.util.Base64.getEncoder().encodeToString(hex.getBytes());
-    }
+    // private String toBase64(String hex) {
+    // return java.util.Base64.getEncoder().encodeToString(hex.getBytes());
+    // }
 
     public String extractUsername(String token) {
         return extractAllClaims(token).getSubject();
+    }
+
+    public String extractRole(String token) {
+        return extractAllClaims(token).get("role", String.class);
     }
 
     public Claims extractAllClaims(String token) {

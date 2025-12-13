@@ -1,5 +1,6 @@
 package com.megamart.backend.auth;
 
+import org.springframework.security.core.context.SecurityContextHolder;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -33,6 +34,13 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(@RequestBody String refreshToken) {
         authService.logout(refreshToken);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<Void> changePassword(@RequestBody ChangePasswordRequest req) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        authService.changePassword(email, req);
         return ResponseEntity.ok().build();
     }
 }

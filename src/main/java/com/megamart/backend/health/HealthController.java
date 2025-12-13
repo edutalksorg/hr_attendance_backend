@@ -8,7 +8,7 @@ public class HealthController {
 
     @GetMapping("/")
     public String home() {
-        return "Hey Sushma Your backend is successfully running";
+        return "Hey Ram Your backend is successfully running";
     }
 
     @GetMapping("/health/ping")

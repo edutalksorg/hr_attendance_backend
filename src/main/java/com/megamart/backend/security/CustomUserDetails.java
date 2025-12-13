@@ -16,7 +16,9 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
+        // Ensure role is always uppercase to match @PreAuthorize expectations
+        String roleName = user.getRole() != null ? user.getRole().name().toUpperCase() : "EMPLOYEE";
+        return List.of(new SimpleGrantedAuthority("ROLE_" + roleName));
     }
 
     @Override

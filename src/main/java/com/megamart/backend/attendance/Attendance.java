@@ -32,6 +32,7 @@ public class Attendance {
     @Column(name = "user_agent")
     private String userAgent;
 
+    @Builder.Default
     @Column(name = "created_at")
     private OffsetDateTime createdAt = OffsetDateTime.now();
 }

@@ -34,9 +34,11 @@ public class User {
     @Enumerated(EnumType.STRING)
     private UserStatus status;
 
+    @Builder.Default
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
 
+    @Builder.Default
     @Column(name = "updated_at")
     private OffsetDateTime updatedAt = OffsetDateTime.now();
 

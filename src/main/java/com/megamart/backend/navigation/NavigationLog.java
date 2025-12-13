@@ -26,6 +26,7 @@ public class NavigationLog {
     @Column(columnDefinition = "jsonb")
     private String metadata;
 
+    @Builder.Default
     @Column(name = "created_at")
     private OffsetDateTime createdAt = OffsetDateTime.now();
 }

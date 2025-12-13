@@ -4,11 +4,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
+import org.springframework.lang.NonNull;
 import java.util.List;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@SuppressWarnings("null")
 public class NotificationService {
 
     private final NotificationRepository repository;
@@ -33,7 +35,7 @@ public class NotificationService {
     }
 
     // MARK READ
-    public void markRead(UUID id) {
+    public void markRead(@NonNull UUID id) {
         Notification n = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Notification not found"));
 

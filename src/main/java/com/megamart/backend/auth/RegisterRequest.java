@@ -8,4 +8,6 @@ public class RegisterRequest {
     private String email;
     private String phone;
     private String password;
+    private String adminCode; // Optional: Use "ADMIN@MEGAMART2025" to register as admin
+    private String role; // Optional: EMPLOYEE, MARKETING_EXECUTIVE, HR (if allowed)
 }

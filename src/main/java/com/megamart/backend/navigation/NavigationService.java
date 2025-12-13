@@ -8,6 +8,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@SuppressWarnings("null")
 public class NavigationService {
     private final NavigationRepository repo;
 
@@ -21,5 +22,7 @@ public class NavigationService {
         return repo.save(l);
     }
 
-    public List<NavigationLog> history(UUID userId) { return repo.findByUserIdOrderByCreatedAtDesc(userId); }
+    public List<NavigationLog> history(UUID userId) {
+        return repo.findByUserIdOrderByCreatedAtDesc(userId);
+    }
 }
