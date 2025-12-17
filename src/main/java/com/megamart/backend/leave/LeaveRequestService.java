@@ -42,6 +42,10 @@ public class LeaveRequestService {
         return repository.findByStatus("PENDING");
     }
 
+    public List<LeaveRequest> getApprovedLeaves(LocalDate date) {
+        return repository.findApprovedLeavesForDate(date);
+    }
+
     public LeaveRequest approveLeaveRequest(UUID leaveRequestId, UUID approverUserId) {
         LeaveRequest lr = getLeaveRequest(leaveRequestId);
         lr.setStatus("APPROVED");

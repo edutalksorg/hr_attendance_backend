@@ -1,5 +1,6 @@
 package com.megamart.backend.user;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.OffsetDateTime;
@@ -17,6 +18,7 @@ public class User {
     @GeneratedValue
     private UUID id;
 
+    @JsonProperty("fullName")
     @Column(name = "full_name")
     private String fullName;
 
@@ -25,6 +27,10 @@ public class User {
 
     private String phone;
 
+    @Column(name = "employee_id")
+    private String employeeId;
+
+    @com.fasterxml.jackson.annotation.JsonIgnore
     @Column(name = "password_hash", nullable = false)
     private String password;
 
@@ -56,10 +62,23 @@ public class User {
     @Column(name = "location_json", columnDefinition = "text")
     private String locationJson;
 
+    @ManyToOne
+    @JoinColumn(name = "shift_id")
+    private com.megamart.backend.shift.Shift shift;
+
     // approvals
     @Column(name = "approved_by")
     private UUID approvedBy;
 
     @Column(name = "approved_at")
     private OffsetDateTime approvedAt;
+
+    @Transient
+    private String profilePhoto;
+
+    @Transient
+    private String bio;
+
+    @Transient
+    private String username; // Mapped from UserProfile or fullName
 }

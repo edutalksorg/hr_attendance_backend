@@ -16,5 +16,25 @@ spring:
   flyway:
     enabled: false
 
+  # Email Configuration
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ranganadhamsivaramakrishna1@gmail.com
+    password: vgnfvutfbbufbfys
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+  servlet:
+    multipart:
+      max-file-size: 20GB
+      max-request-size: 20GB
+
 server:
   port: 9090
+
+

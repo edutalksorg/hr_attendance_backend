@@ -21,36 +21,85 @@ public class DocumentController {
 
     private final DocumentService service;
 
-    public static record CreateReq(@NotNull UUID userId, @NotBlank String type, @NotBlank String filePath,
-            UUID generatedBy, OffsetDateTime expiresAt) {
-    }
+    @PostMapping(consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
+    public ResponseEntity<Document> upload(@RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+            @RequestParam("type") String type,
+            @RequestParam(value = "targetUserId", required = false) UUID targetUserId,
+            @RequestHeader(value = "X-User-Id", required = false) UUID headerUserId,
+            org.springframework.security.core.Authentication authentication) {
 
-    public static record UpdateReq(@NotBlank String type, @NotBlank String filePath, OffsetDateTime expiresAt) {
-    }
+        com.megamart.backend.security.CustomUserDetails principal = (com.megamart.backend.security.CustomUserDetails) authentication
+                .getPrincipal();
+        UUID uploaderId = principal.getUser().getId();
+        String role = principal.getAuthorities().stream().findFirst().get().getAuthority().replace("ROLE_", "");
+        String uploaderName = principal.getUser().getFullName() + " (" + principal.getUser().getEmployeeId() + ")";
 
-    @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','HR')")
-    public ResponseEntity<Document> create(@Valid @RequestBody CreateReq req) {
+        // Determine Owner (userId of the document)
+        UUID ownerId = uploaderId; // Default to self
+
+        if (targetUserId != null) {
+            // Only Admin/HR can upload for others
+            if (role.equalsIgnoreCase("ADMIN") || role.equalsIgnoreCase("HR")) {
+                ownerId = targetUserId;
+            } else {
+                // Return 403 if normal user tries to upload for others
+                return ResponseEntity.status(403).build();
+            }
+        }
+
         return ResponseEntity.status(201)
-                .body(service.create(req.userId(), req.type(), req.filePath(), req.generatedBy(), req.expiresAt()));
+                .body(service.create(ownerId, type, file, uploaderId, role, uploaderName, null));
+    }
+
+    @GetMapping("/all")
+    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    public ResponseEntity<List<Document>> listAll() {
+        return ResponseEntity.ok(service.listAll());
+    }
+
+    @GetMapping("/download/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')") // Check ownership logic inside service
+                                                                               // or here?
+    public ResponseEntity<org.springframework.core.io.Resource> download(@PathVariable UUID id,
+            org.springframework.security.core.Authentication auth) {
+        Document doc = service.get(id);
+
+        // Access check: Admin/HR can download anything. Users only their own.
+        com.megamart.backend.security.CustomUserDetails principal = (com.megamart.backend.security.CustomUserDetails) auth
+                .getPrincipal();
+        String role = principal.getAuthorities().stream().findFirst().get().getAuthority();
+
+        if (!role.contains("ADMIN") && !role.contains("HR") && !doc.getUserId().equals(principal.getUser().getId())) {
+            return ResponseEntity.status(403).build();
+        }
+
+        org.springframework.core.io.Resource resource = service.loadFileAsResource(doc);
+
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + doc.getFileName() + "\"")
+                .body(resource);
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
     public ResponseEntity<Document> get(@PathVariable @NonNull UUID id) {
         return ResponseEntity.ok(service.get(id));
     }
 
     @GetMapping("/user/{userId}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE')")
-    public ResponseEntity<List<Document>> listForUser(@PathVariable @NonNull UUID userId) {
-        return ResponseEntity.ok(service.listForUser(userId));
-    }
+    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
+    public ResponseEntity<List<Document>> listForUser(@PathVariable @NonNull UUID userId,
+            org.springframework.security.core.Authentication auth) {
+        com.megamart.backend.security.CustomUserDetails principal = (com.megamart.backend.security.CustomUserDetails) auth
+                .getPrincipal(); // FIX: Explicit cast
+        String role = principal.getAuthorities().stream().findFirst().get().getAuthority();
 
-    @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR')")
-    public ResponseEntity<Document> update(@PathVariable @NonNull UUID id, @Valid @RequestBody UpdateReq req) {
-        return ResponseEntity.ok(service.update(id, req.type(), req.filePath(), req.expiresAt()));
+        if (!role.contains("ADMIN") && !role.contains("HR") && !userId.equals(principal.getUser().getId())) {
+            return ResponseEntity.status(403).build();
+        }
+        return ResponseEntity.ok(service.listForUser(userId));
     }
 
     @DeleteMapping("/{id}")

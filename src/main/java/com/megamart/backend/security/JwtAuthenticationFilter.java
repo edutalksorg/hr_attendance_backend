@@ -15,9 +15,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.lang.NonNull;
 
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
+// import org.springframework.security.core.authority.SimpleGrantedAuthority; // Keeping commented out or removing if truly unused.
 import java.util.Collection;
-import java.util.List;
+// import java.util.List; // Checking usage
 import java.io.IOException;
 
 @Component
@@ -58,47 +58,43 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        final String jwt = authHeader.substring(7);
-        final String username = jwtService.extractUsername(jwt);
+        try {
+            final String jwt = authHeader.substring(7);
+            final String username = jwtService.extractUsername(jwt);
 
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-            if (jwtService.isTokenValid(jwt, userDetails.getUsername())) {
+                if (jwtService.isTokenValid(jwt, userDetails.getUsername())) {
 
-                // Extract role from token
-                String role = jwtService.extractRole(jwt);
-                Collection<? extends GrantedAuthority> authorities;
+                    // Extract role from token (for logging only)
+                    String role = jwtService.extractRole(jwt);
 
-                if (role != null) {
-                    // Standardize role to ROLE_ format and force UPPERCASE
-                    String standardizedRole = role.toUpperCase();
-                    String authority = standardizedRole.startsWith("ROLE_") ? standardizedRole
-                            : "ROLE_" + standardizedRole;
-                    authorities = List.of(new SimpleGrantedAuthority(authority));
+                    // Use authorities from the database (via UserDetails) to ensure real-time role
+                    // updates
+                    Collection<? extends GrantedAuthority> authorities = userDetails.getAuthorities();
+
+                    // DEBUG: Log authorities being assigned
+                    log.info("DEBUG - User: {}, Extracted Role: {}, Assigned Authorities: {}",
+                            username, role, authorities);
+
+                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                            userDetails,
+                            null,
+                            authorities); // Use token-based authorities
+
+                    authToken.setDetails(
+                            new WebAuthenticationDetailsSource().buildDetails(request));
+
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                    log.info("DEBUG - Authentication set successfully for user: {}", username);
                 } else {
-                    // Fallback to DB authorities if token has no role
-                    authorities = userDetails.getAuthorities();
+                    log.warn("DEBUG - Token validation failed for user: {}", username);
                 }
-
-                // DEBUG: Log authorities being assigned
-                log.info("DEBUG - User: {}, Extracted Role: {}, Assigned Authorities: {}",
-                        username, role, authorities);
-
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userDetails,
-                        null,
-                        authorities); // Use token-based authorities
-
-                authToken.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request));
-
-                SecurityContextHolder.getContext().setAuthentication(authToken);
-                log.info("DEBUG - Authentication set successfully for user: {}", username);
-            } else {
-                log.warn("DEBUG - Token validation failed for user: {}", username);
             }
+        } catch (Exception e) {
+            log.error("Cannot set user authentication: {}", e.getMessage());
         }
 
         filterChain.doFilter(request, response);

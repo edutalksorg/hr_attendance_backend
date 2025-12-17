@@ -13,17 +13,20 @@ import com.megamart.backend.user.UserRepository;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/profile")
+@RequestMapping("/api/v1/profile")
 @RequiredArgsConstructor
 public class ProfileController {
     private final UserProfileService profileService;
     private final UserRepository userRepository;
 
-    public static record UpdateProfileRequest(@NotBlank String username, String bio) {}
-    public static record PhotoUploadRequest(@NotBlank String photoUrl) {}
+    public static record UpdateProfileRequest(@NotBlank String username, String bio, String email, String employeeId) {
+    }
+
+    public static record PhotoUploadRequest(@NotBlank String photoUrl) {
+    }
 
     @GetMapping("/me")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<UserProfileDto> getMyProfile() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
@@ -32,16 +35,30 @@ public class ProfileController {
     }
 
     @PutMapping("/update")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<UserProfileDto> updateProfile(@RequestBody UpdateProfileRequest req) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Update User entity fields
+        if (req.email() != null && !req.email().isBlank()) {
+            user.setEmail(req.email());
+        }
+        if (req.employeeId() != null) {
+            user.setEmployeeId(req.employeeId());
+        }
+        if (req.username() != null && !req.username().isBlank()) {
+            user.setFullName(req.username());
+        }
+        userRepository.save(user);
+
+        // Update UserProfile entity fields
         UserProfileEntity profile = profileService.updateProfile(user.getId(), req.username(), req.bio());
         return ResponseEntity.ok(toDto(profile));
     }
 
     @PostMapping("/photo")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<UserProfileDto> uploadPhoto(@RequestBody PhotoUploadRequest req) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
@@ -50,7 +67,7 @@ public class ProfileController {
     }
 
     @GetMapping("/{userId}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<UserProfileDto> getPublicProfile(@PathVariable UUID userId) {
         UserProfileEntity profile = profileService.getProfile(userId);
         return ResponseEntity.ok(toDto(profile));

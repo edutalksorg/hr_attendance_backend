@@ -14,6 +14,8 @@ import java.util.UUID;
 public class NotificationService {
 
     private final NotificationRepository repository;
+    private final com.megamart.backend.email.EmailService emailService;
+    private final com.megamart.backend.user.UserRepository userRepository;
 
     // SEND NOTIFICATION
     public Notification send(UUID userId, String title, String message, String type) {
@@ -26,7 +28,24 @@ public class NotificationService {
                 .createdAt(OffsetDateTime.now())
                 .build();
 
-        return repository.save(n);
+        // Save notification first to ensure it's created even if email fails
+        Notification saved = repository.save(n);
+
+        // Send Email (don't let email failures crash the notification creation)
+        try {
+            userRepository.findById(userId).ifPresent(user -> {
+                if (user.getEmail() != null && !user.getEmail().isEmpty()) {
+                    // Async call is handled inside EmailService
+                    emailService.sendEmail(user.getEmail(), title, message);
+                }
+            });
+        } catch (Exception e) {
+            // Log but don't propagate - notification was already saved
+            System.err.println("Failed to send email for notification: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return saved;
     }
 
     // LIST FOR USER
@@ -41,5 +60,16 @@ public class NotificationService {
 
         n.setRead(true);
         repository.save(n);
+    }
+
+    // BROADCAST
+    public void broadcast(String title, String message, String type) {
+        List<com.megamart.backend.user.User> users = userRepository.findAll();
+        for (com.megamart.backend.user.User user : users) {
+            // Avoid sending to deleted/blocked users if needed, but for now send to all
+            if (user.getStatus() == com.megamart.backend.user.UserStatus.ACTIVE) {
+                send(user.getId(), title, message, type);
+            }
+        }
     }
 }

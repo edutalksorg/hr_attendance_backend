@@ -17,6 +17,9 @@ public class AttendanceHistoryDTO {
     private OffsetDateTime checkIn;
     private OffsetDateTime checkOut;
     private String ipAddress;
+    private String logoutIpAddress;
     private String remark;
     private String status; // Present, Absent, Holiday
+    private boolean canCheckOut;
+    private java.util.List<java.util.Map<String, String>> ipHistory;
 }

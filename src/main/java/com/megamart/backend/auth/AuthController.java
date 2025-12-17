@@ -7,10 +7,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 public class AuthController {
     private final AuthService authService;
+
+    private final com.megamart.backend.security.IpDetectionService ipService;
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest req) {
@@ -20,20 +22,20 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody AuthRequest req, HttpServletRequest request) {
-        String ip = request.getRemoteAddr();
+        String ip = ipService.getClientIp(request);
         AuthResponse resp = authService.login(req, ip);
         return ResponseEntity.ok(resp);
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<AuthResponse> refresh(@RequestBody String refreshToken) {
-        AuthResponse resp = authService.refresh(refreshToken);
+    public ResponseEntity<AuthResponse> refresh(@RequestBody TokenRequest req) {
+        AuthResponse resp = authService.refresh(req.getRefreshToken());
         return ResponseEntity.ok(resp);
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(@RequestBody String refreshToken) {
-        authService.logout(refreshToken);
+    public ResponseEntity<Void> logout(@RequestBody TokenRequest req) {
+        authService.logout(req.getRefreshToken());
         return ResponseEntity.ok().build();
     }
 
@@ -41,6 +43,18 @@ public class AuthController {
     public ResponseEntity<Void> changePassword(@RequestBody ChangePasswordRequest req) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         authService.changePassword(email, req);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Void> forgotPassword(@RequestBody ForgotPasswordRequest req) {
+        authService.forgotPassword(req.getEmail());
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<Void> resetPassword(@RequestBody ResetPasswordRequest req) {
+        authService.resetPassword(req.getToken(), req.getNewPassword());
         return ResponseEntity.ok().build();
     }
 }

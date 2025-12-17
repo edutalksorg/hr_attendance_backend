@@ -13,4 +13,9 @@ public interface AttendanceRepository extends JpaRepository<Attendance, UUID> {
 
     List<Attendance> findByUserIdAndLoginTimeBetweenOrderByLoginTimeDesc(UUID userId, java.time.OffsetDateTime start,
             java.time.OffsetDateTime end);
+
+    java.util.Optional<Attendance> findTopByUserIdAndLogoutTimeIsNullOrderByLoginTimeDesc(UUID userId);
+
+    @org.springframework.data.jpa.repository.Query("SELECT COUNT(DISTINCT a.userId) FROM Attendance a WHERE a.loginTime >= :start AND a.loginTime < :end")
+    long countDistinctUserIdByLoginTimeBetween(java.time.OffsetDateTime start, java.time.OffsetDateTime end);
 }

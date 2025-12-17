@@ -24,6 +24,15 @@ public class Document {
     @Column(name = "type", nullable = false)
     private String type;
 
+    @Column(name = "user_role")
+    private String role;
+
+    @Column(name = "uploaded_by")
+    private String uploadedBy;
+
+    @Column(name = "file_name", nullable = false)
+    private String fileName;
+
     @Column(name = "file_path", nullable = false)
     private String filePath;
 

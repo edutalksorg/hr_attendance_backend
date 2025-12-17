@@ -1,0 +1,2 @@
+ALTER TABLE notifications ALTER COLUMN message TYPE TEXT;
+ALTER TABLE notifications ALTER COLUMN title TYPE VARCHAR(500);

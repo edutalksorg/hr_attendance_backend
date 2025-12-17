@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/holidays")
+@RequestMapping("/api/v1/holidays")
 @RequiredArgsConstructor
 @SuppressWarnings("null")
 public class HolidayController {
@@ -36,13 +36,13 @@ public class HolidayController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
     public ResponseEntity<Holiday> get(@PathVariable @NonNull UUID id) {
         return ResponseEntity.ok(service.get(id));
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
     public ResponseEntity<List<Holiday>> list() {
         return ResponseEntity.ok(service.list());
     }
@@ -61,7 +61,7 @@ public class HolidayController {
     }
 
     @GetMapping("/between")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
     public ResponseEntity<List<Holiday>> between(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end) {

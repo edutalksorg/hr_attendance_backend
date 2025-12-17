@@ -7,15 +7,25 @@ import java.time.OffsetDateTime;
 import org.springframework.lang.NonNull;
 import java.util.List;
 import java.util.UUID;
+import java.util.Map;
+import java.util.stream.Collectors;
+import com.megamart.backend.profile.UserProfileEntity;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 @RequiredArgsConstructor
 @SuppressWarnings("null")
 public class UserService {
 
+    private static final Logger logger = LoggerFactory.getLogger(UserService.class);
+
     private final UserRepository userRepository;
     private final ApprovalRepository approvalRepository;
     private final PasswordEncoder encoder;
+    private final com.megamart.backend.profile.UserProfileRepository userProfileRepository;
+    private final com.megamart.backend.notification.NotificationService notificationService;
 
     public User registerEmployee(String fullName, String email, String phone, String rawPassword, UserRole role) {
         if (userRepository.existsByEmail(email)) {
@@ -45,7 +55,43 @@ public class UserService {
     }
 
     public List<User> listAll() {
-        return userRepository.findAll();
+        try {
+            List<User> users = userRepository.findAll();
+            populatePhotos(users);
+            return users;
+        } catch (Exception e) {
+            logger.error("Error listing all users", e);
+            throw e; // Rethrow to let the controller handle it (or return empty list if preferred)
+        }
+    }
+
+    public List<User> findByRole(UserRole role) {
+        List<User> users = userRepository.findByRole(role);
+        populatePhotos(users);
+        return users;
+    }
+
+    private void populatePhotos(List<User> users) {
+        if (users == null || users.isEmpty())
+            return;
+        try {
+            List<UserProfileEntity> profiles = userProfileRepository.findAll();
+            Map<UUID, String> photoMap = new java.util.HashMap<>();
+            for (UserProfileEntity p : profiles) {
+                if (p.getUserId() != null) {
+                    photoMap.put(p.getUserId(), p.getPhotoUrl() != null ? p.getPhotoUrl() : "");
+                }
+            }
+
+            users.forEach(u -> {
+                if (u.getId() != null && photoMap.containsKey(u.getId())) {
+                    u.setProfilePhoto(photoMap.get(u.getId()));
+                }
+            });
+        } catch (Exception e) {
+            logger.error("Error populating user photos", e);
+            // Non-critical, swallow exception to return user data at least
+        }
     }
 
     public User findByEmail(String email) {
@@ -91,6 +137,10 @@ public class UserService {
             approvalRepository.save(ap);
         });
 
+        // Notify
+        notificationService.send(targetUserId, "Account Approved", "Your account has been approved. You can now login.",
+                "SUCCESS");
+
         return target;
     }
 
@@ -100,6 +150,7 @@ public class UserService {
         u.setStatus(UserStatus.BLOCKED);
         u.setUpdatedAt(OffsetDateTime.now());
         userRepository.save(u);
+        notificationService.send(userId, "Account Blocked", "Your account has been blocked by admin.", "ERROR");
     }
 
     public void unblockUser(@NonNull UUID userId) {
@@ -108,6 +159,7 @@ public class UserService {
         u.setStatus(UserStatus.ACTIVE);
         u.setUpdatedAt(OffsetDateTime.now());
         userRepository.save(u);
+        notificationService.send(userId, "Account Unblocked", "Your account has been unblocked.", "SUCCESS");
     }
 
     public void deleteUser(@NonNull UUID userId) {

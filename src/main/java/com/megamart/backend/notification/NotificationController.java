@@ -19,13 +19,23 @@ public class NotificationController {
 
     @PostMapping("/send")
     @PreAuthorize("hasAnyRole('ADMIN','HR')")
-    public ResponseEntity<Notification> send(
-            @RequestParam @NonNull UUID userId,
-            @RequestParam String title,
-            @RequestParam String message,
-            @RequestParam(defaultValue = "INFO") String type) {
-        Notification n = service.send(userId, title, message, type);
-        return ResponseEntity.status(201).body(n);
+    public ResponseEntity<?> send(@RequestBody @jakarta.validation.Valid NotificationRequest request) {
+        try {
+            UUID parsedUserId = UUID.fromString(request.getUserId());
+            Notification n = service.send(parsedUserId, request.getTitle(), request.getMessage(), request.getType());
+            return ResponseEntity.status(201).body(n);
+        } catch (IllegalArgumentException e) {
+            System.err.println("Invalid UUID format for userId: " + request.getUserId());
+            return ResponseEntity.badRequest().body(java.util.Map.of(
+                    "error", "Invalid user ID format",
+                    "message", e.getMessage()));
+        } catch (Exception e) {
+            System.err.println("Error sending notification: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(java.util.Map.of(
+                    "error", "Failed to send notification",
+                    "message", e.getMessage() != null ? e.getMessage() : "Unknown error"));
+        }
     }
 
     @GetMapping("/{userId}")
@@ -51,12 +61,17 @@ public class NotificationController {
     }
 
     @PostMapping("/broadcast")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> broadcastNotification(
-            @RequestParam String title,
-            @RequestParam String message,
-            @RequestParam(defaultValue = "INFO") String type) {
-        // This is a stub - in production, notify all users or by role
-        return ResponseEntity.ok().build();
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
+    public ResponseEntity<?> broadcastNotification(@RequestBody @jakarta.validation.Valid NotificationRequest request) {
+        try {
+            service.broadcast(request.getTitle(), request.getMessage(), request.getType());
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            System.err.println("Error broadcasting notification: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(java.util.Map.of(
+                    "error", "Failed to broadcast notification",
+                    "message", e.getMessage() != null ? e.getMessage() : "Unknown error"));
+        }
     }
 }

@@ -26,4 +26,7 @@ public class Team {
     @Builder.Default
     @Column(name = "created_at")
     private OffsetDateTime createdAt = OffsetDateTime.now();
+
+    @Column(name = "leader_id")
+    private UUID leaderId;
 }

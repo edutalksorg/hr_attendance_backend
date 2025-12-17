@@ -8,40 +8,79 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/attendance")
+@RequestMapping("/api/v1/attendance")
 @RequiredArgsConstructor
 @SuppressWarnings("null")
 public class AttendanceController {
 
     private final AttendanceService attendanceService;
+    private final com.megamart.backend.security.IpDetectionService ipService;
 
     @PostMapping("/login/{userId}")
     @PreAuthorize("hasAnyRole('EMPLOYEE','HR','ADMIN','MARKETING_EXECUTIVE')")
     public ResponseEntity<Attendance> login(@PathVariable UUID userId,
             @RequestHeader(value = "X-User-Agent", required = false) String ua,
-            @RequestHeader(value = "X-Forwarded-For", required = false) String ip,
             jakarta.servlet.http.HttpServletRequest request) {
-        String ipAddr = (ip == null || ip.isEmpty()) ? request.getRemoteAddr() : ip;
+        String ipAddr = ipService.getClientIp(request);
         Attendance a = attendanceService.recordLogin(userId, ipAddr, ua);
         return ResponseEntity.ok(a);
     }
 
     @PostMapping("/logout/{attendanceId}")
     @PreAuthorize("hasAnyRole('EMPLOYEE','HR','ADMIN','MARKETING_EXECUTIVE')")
-    public ResponseEntity<Attendance> logout(@PathVariable UUID attendanceId) {
-        return ResponseEntity.ok(attendanceService.recordLogout(attendanceId));
+    public ResponseEntity<Attendance> logout(@PathVariable UUID attendanceId,
+            jakarta.servlet.http.HttpServletRequest request) {
+        String ipAddr = ipService.getClientIp(request);
+        return ResponseEntity.ok(attendanceService.recordLogout(attendanceId, ipAddr));
+    }
+
+    @PutMapping("/update/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    public ResponseEntity<Attendance> updateAttendance(
+            @PathVariable UUID id,
+            @RequestBody com.megamart.backend.dto.UpdateAttendanceRequest request) {
+        return ResponseEntity.ok(attendanceService.updateAttendance(id, request));
+    }
+
+    @PostMapping("/track/{userId}")
+    @PreAuthorize("hasAnyRole('MARKETING_EXECUTIVE')")
+    public ResponseEntity<Void> trackSession(@PathVariable UUID userId,
+            jakarta.servlet.http.HttpServletRequest request) {
+        String ip = ipService.getClientIp(request);
+        attendanceService.recordHourlyIp(userId, ip);
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/history/{userId}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
     public ResponseEntity<List<Attendance>> history(@PathVariable UUID userId) {
         return ResponseEntity.ok(attendanceService.getHistory(userId));
     }
 
     @GetMapping("/history/60days/{userId}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
     public ResponseEntity<List<com.megamart.backend.dto.AttendanceHistoryDTO>> history60Days(
             @PathVariable UUID userId) {
         return ResponseEntity.ok(attendanceService.getAttendanceHistoryLast60Days(userId));
+    }
+
+    @GetMapping("/all")
+    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    public ResponseEntity<List<Attendance>> all() {
+        return ResponseEntity.ok(attendanceService.listAll());
+    }
+
+    @GetMapping("/stats/{userId}")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
+    public ResponseEntity<AttendanceService.AttendanceStatsDTO> stats(@PathVariable UUID userId) {
+        return ResponseEntity.ok(attendanceService.getStats(userId));
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
+    public ResponseEntity<com.megamart.backend.dto.AttendanceHistoryDTO> getByDate(
+            @RequestParam UUID userId,
+            @RequestParam java.time.LocalDate date) {
+        return ResponseEntity.ok(attendanceService.getByDate(userId, date));
     }
 }

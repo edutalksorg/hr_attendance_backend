@@ -27,7 +27,7 @@ public class UserProfileEntity {
     @Column(columnDefinition = "text")
     private String bio;
 
-    @Column(name = "photo_url")
+    @Column(name = "photo_url", columnDefinition = "text")
     private String photoUrl;
 
     @Builder.Default

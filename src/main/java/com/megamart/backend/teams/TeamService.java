@@ -35,6 +35,12 @@ public class TeamService {
         return teamRepository.save(t);
     }
 
+    public Team updateLeader(UUID id, UUID leaderId) {
+        Team t = get(id);
+        t.setLeaderId(leaderId);
+        return teamRepository.save(t);
+    }
+
     public void delete(@NonNull UUID id) {
         teamRepository.deleteById(id);
     }

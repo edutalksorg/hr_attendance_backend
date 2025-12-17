@@ -12,11 +12,12 @@ import java.util.UUID;
 public class NavigationService {
     private final NavigationRepository repo;
 
-    public NavigationLog log(UUID userId, String path, String metadata) {
+    public NavigationLog log(UUID userId, String path, String metadata, String ip) {
         NavigationLog l = NavigationLog.builder()
                 .userId(userId)
                 .path(path)
                 .metadata(metadata)
+                .ipAddress(ip)
                 .createdAt(OffsetDateTime.now())
                 .build();
         return repo.save(l);

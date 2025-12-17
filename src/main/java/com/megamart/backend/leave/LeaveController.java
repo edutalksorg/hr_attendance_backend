@@ -12,6 +12,8 @@ import org.springframework.lang.NonNull;
 
 import com.megamart.backend.user.User;
 import com.megamart.backend.user.UserRepository;
+import com.megamart.backend.profile.UserProfileService;
+import com.megamart.backend.profile.UserProfileEntity;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -19,12 +21,13 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/leave")
+@RequestMapping("/api/v1/leave")
 @RequiredArgsConstructor
 @SuppressWarnings("null")
 public class LeaveController {
     private final LeaveRequestService service;
     private final UserRepository userRepository;
+    private final UserProfileService userProfileService;
 
     public static record RequestLeaveReq(
             @NotBlank String leaveType,
@@ -34,7 +37,7 @@ public class LeaveController {
     }
 
     @PostMapping("/request")
-    @PreAuthorize("hasAnyRole('EMPLOYEE','MARKETING_EXECUTIVE','HR')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','MARKETING_EXECUTIVE','HR','ADMIN')")
     public ResponseEntity<LeaveRequestDto> requestLeave(@RequestBody RequestLeaveReq req) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
@@ -44,7 +47,7 @@ public class LeaveController {
     }
 
     @GetMapping("/my-requests")
-    @PreAuthorize("hasAnyRole('EMPLOYEE','MARKETING_EXECUTIVE','HR')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','MARKETING_EXECUTIVE','HR','ADMIN')")
     public ResponseEntity<List<LeaveRequestDto>> getMyLeaveRequests() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
@@ -55,7 +58,27 @@ public class LeaveController {
     @GetMapping("/pending")
     @PreAuthorize("hasAnyRole('HR','ADMIN')")
     public ResponseEntity<List<LeaveRequestDto>> getPendingLeaveRequests() {
-        List<LeaveRequest> requests = service.getPendingLeaveRequests();
+        List<LeaveRequestDto> requests = service.getPendingLeaveRequests().stream().map(this::toDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(requests);
+    }
+
+    @GetMapping("/approved")
+    @PreAuthorize("hasAnyRole('HR','ADMIN')")
+    public ResponseEntity<List<LeaveRequestDto>> getApprovedLeaves(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        if (date == null) {
+            date = LocalDate.now();
+        }
+        List<LeaveRequestDto> requests = service.getApprovedLeaves(date).stream().map(this::toDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(requests);
+    }
+
+    @GetMapping("/user/{userId}")
+    @PreAuthorize("hasAnyRole('HR','ADMIN')")
+    public ResponseEntity<List<LeaveRequestDto>> getLeavesForUser(@PathVariable UUID userId) {
+        List<LeaveRequest> requests = service.getUserLeaveRequests(userId);
         return ResponseEntity.ok(requests.stream().map(this::toDto).collect(Collectors.toList()));
     }
 
@@ -85,6 +108,9 @@ public class LeaveController {
     }
 
     private LeaveRequestDto toDto(LeaveRequest lr) {
+        User user = userRepository.findById(lr.getUserId()).orElse(null);
+        UserProfileEntity profile = user != null ? userProfileService.getProfile(user.getId()) : null;
+
         return LeaveRequestDto.builder()
                 .id(lr.getId())
                 .userId(lr.getUserId())
@@ -97,6 +123,10 @@ public class LeaveController {
                 .approvedAt(lr.getApprovedAt())
                 .createdAt(lr.getCreatedAt())
                 .updatedAt(lr.getUpdatedAt())
+                .userName(profile != null ? profile.getUsername() : (user != null ? user.getFullName() : "Unknown"))
+                .userEmployeeId(user != null ? user.getEmployeeId() : null)
+                .userProfilePhoto(profile != null ? profile.getPhotoUrl() : null)
+                .userRole(user != null ? user.getRole().toString() : null)
                 .build();
     }
 }

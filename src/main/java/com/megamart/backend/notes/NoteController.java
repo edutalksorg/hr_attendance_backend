@@ -26,19 +26,19 @@ public class NoteController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
     public ResponseEntity<Note> create(@Valid @RequestBody CreateReq req) {
         return ResponseEntity.status(201).body(service.create(req.userId(), req.teamId(), req.title(), req.body()));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
     public ResponseEntity<Note> get(@PathVariable @NonNull UUID id) {
         return ResponseEntity.ok(service.get(id));
     }
 
     @GetMapping("/user/{userId}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
     public ResponseEntity<List<Note>> listForUser(@PathVariable @NonNull UUID userId) {
         return ResponseEntity.ok(service.listForUser(userId));
     }
@@ -50,7 +50,7 @@ public class NoteController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
     public ResponseEntity<Note> update(@PathVariable @NonNull UUID id, @Valid @RequestBody UpdateReq req) {
         return ResponseEntity.ok(service.update(id, req.title(), req.body()));
     }

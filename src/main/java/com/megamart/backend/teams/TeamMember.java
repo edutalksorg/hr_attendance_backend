@@ -27,4 +27,16 @@ public class TeamMember {
     @Builder.Default
     @Column(name = "created_at")
     private OffsetDateTime createdAt = OffsetDateTime.now();
+
+    @Transient
+    private String userName;
+
+    @Transient
+    private String userRole;
+
+    @Transient
+    private String userProfilePhoto;
+
+    @Transient
+    private String userEmployeeId;
 }

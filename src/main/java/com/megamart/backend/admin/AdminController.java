@@ -6,8 +6,11 @@ import com.megamart.backend.navigation.NavigationLog;
 import com.megamart.backend.navigation.NavigationRepository;
 import com.megamart.backend.notification.Notification;
 import com.megamart.backend.notification.NotificationRepository;
+import com.megamart.backend.leave.LeaveRequestRepository;
+import com.megamart.backend.teams.TeamRepository;
 import com.megamart.backend.user.User;
 import com.megamart.backend.user.UserRepository;
+import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -17,7 +20,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/admin")
+@RequestMapping("/api/v1/admin")
 @RequiredArgsConstructor
 public class AdminController {
 
@@ -25,6 +28,8 @@ public class AdminController {
     private final NavigationRepository navigationRepository;
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+    private final LeaveRequestRepository leaveRequestRepository;
+    private final TeamRepository teamRepository;
 
     @GetMapping("/attendance/user/{userId}")
     @PreAuthorize("hasRole('ADMIN')")
@@ -36,6 +41,17 @@ public class AdminController {
     @PreAuthorize("hasRole('ADMIN') or hasRole('HR')")
     public ResponseEntity<List<Attendance>> allAttendance() {
         return ResponseEntity.ok(attendanceRepository.findAll());
+    }
+
+    @GetMapping("/users/role/{role}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<User>> usersByRole(@PathVariable String role) {
+        try {
+            com.megamart.backend.user.UserRole r = com.megamart.backend.user.UserRole.valueOf(role.toUpperCase());
+            return ResponseEntity.ok(userRepository.findByRole(r));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @GetMapping("/attendance/hr")
@@ -62,5 +78,29 @@ public class AdminController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<Notification>> notificationsForUser(@PathVariable UUID userId) {
         return ResponseEntity.ok(notificationRepository.findByUserIdOrderByCreatedAtDesc(userId));
+    }
+
+    @GetMapping("/dashboard/stats")
+    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    public ResponseEntity<DashboardStatsDTO> dashboardStats() {
+        long employees = userRepository.count();
+        long teams = teamRepository.count();
+
+        LocalDate today = LocalDate.now();
+        List<Attendance> allAtt = attendanceRepository.findAll();
+        long present = allAtt.stream()
+                .filter(a -> a.getLoginTime().toLocalDate().isEqual(today))
+                .count();
+
+        long onLeave = leaveRequestRepository.findAll().stream()
+                .filter(l -> "APPROVED".equalsIgnoreCase(l.getStatus())
+                        && !today.isBefore(l.getStartDate())
+                        && !today.isAfter(l.getEndDate()))
+                .count();
+
+        return ResponseEntity.ok(new DashboardStatsDTO(employees, present, onLeave, teams));
+    }
+
+    public static record DashboardStatsDTO(long totalEmployees, long presentToday, long onLeave, long totalTeams) {
     }
 }

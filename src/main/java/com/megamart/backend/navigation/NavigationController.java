@@ -15,12 +15,18 @@ public class NavigationController {
 
     @PostMapping("/log")
     @PreAuthorize("hasRole('MARKETING_EXECUTIVE')")
-    public ResponseEntity<NavigationLog> log(@RequestParam UUID userId, @RequestParam String path, @RequestParam(required=false) String metadata) {
-        return ResponseEntity.ok(service.log(userId, path, metadata));
+    public ResponseEntity<NavigationLog> log(@RequestParam UUID userId, @RequestParam String path,
+            @RequestParam(required = false) String metadata,
+            @RequestHeader(value = "X-Forwarded-For", required = false) String headerIp,
+            @RequestParam(value = "ip", required = false) String paramIp,
+            jakarta.servlet.http.HttpServletRequest request) {
+        String ipAddr = (paramIp != null && !paramIp.isEmpty()) ? paramIp
+                : ((headerIp != null && !headerIp.isEmpty()) ? headerIp : request.getRemoteAddr());
+        return ResponseEntity.ok(service.log(userId, path, metadata, ipAddr));
     }
 
     @GetMapping("/history/{userId}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MARKETING_EXECUTIVE')")
     public ResponseEntity<List<NavigationLog>> history(@PathVariable UUID userId) {
         return ResponseEntity.ok(service.history(userId));
     }

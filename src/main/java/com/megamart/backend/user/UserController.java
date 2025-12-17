@@ -8,18 +8,28 @@ import org.springframework.lang.NonNull;
 import java.util.List;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
 @SuppressWarnings("null")
 public class UserController {
 
+    private static final Logger logger = LoggerFactory.getLogger(UserController.class);
+
     private final UserService userService;
 
     @GetMapping("/all")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('HR')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('HR') or hasRole('EMPLOYEE') or hasRole('MARKETING_EXECUTIVE')")
     public ResponseEntity<List<User>> allUsers() {
-        return ResponseEntity.ok(userService.listAll());
+        try {
+            return ResponseEntity.ok(userService.listAll());
+        } catch (Exception e) {
+            logger.error("Failed to fetch all users", e);
+            throw new RuntimeException("Error fetching users: " + e.getMessage());
+        }
     }
 
     @GetMapping("/grouped")
@@ -29,11 +39,24 @@ public class UserController {
                 .collect(java.util.stream.Collectors.groupingBy(u -> u.getRole().name())));
     }
 
+    @GetMapping("/role/{role}")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('HR')")
+    public ResponseEntity<List<User>> usersByRole(@PathVariable String role) {
+        try {
+            UserRole userRole = UserRole.valueOf(role.toUpperCase());
+            return ResponseEntity.ok(userService.findByRole(userRole));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
     @PostMapping("/approve/{targetId}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('HR')")
-    public ResponseEntity<User> approve(@PathVariable("targetId") @NonNull UUID target,
-            @RequestParam("approverId") @NonNull UUID approverId) {
-        User u = userService.approveUser(approverId, target);
+    public ResponseEntity<User> approve(@PathVariable("targetId") @NonNull UUID target) {
+        String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication()
+                .getName();
+        User admin = userService.findByEmail(email);
+        User u = userService.approveUser(admin.getId(), target);
         return ResponseEntity.ok(u);
     }
 
@@ -58,12 +81,25 @@ public class UserController {
         return ResponseEntity.ok().build();
     }
 
+    private final com.megamart.backend.profile.UserProfileService profileService;
+
     @GetMapping("/me")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<User> me() {
         String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication()
                 .getName();
         User user = userService.findByEmail(email);
+
+        // Populate profile data into User object
+        try {
+            com.megamart.backend.profile.UserProfileEntity profile = profileService.getProfile(user.getId());
+            user.setProfilePhoto(profile.getPhotoUrl());
+            user.setBio(profile.getBio());
+            user.setUsername(profile.getUsername());
+        } catch (Exception e) {
+            // Ignore if profile load fails
+        }
+
         return ResponseEntity.ok(user);
     }
 

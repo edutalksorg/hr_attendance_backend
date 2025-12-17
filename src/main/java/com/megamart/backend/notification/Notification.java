@@ -20,11 +20,14 @@ public class Notification {
 
     private UUID userId;
 
+    @Column(length = 500)
     private String title;
 
+    @Lob
+    @Column(columnDefinition = "TEXT")
     private String message;
 
-    private String type;  // INFO | WARNING | SUCCESS | ERROR
+    private String type; // INFO | WARNING | SUCCESS | ERROR
 
     @Builder.Default
     private boolean isRead = false;

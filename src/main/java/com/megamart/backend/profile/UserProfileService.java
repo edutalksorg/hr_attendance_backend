@@ -26,7 +26,7 @@ public class UserProfileService {
 
     public UserProfileEntity getProfile(UUID userId) {
         return repository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("Profile not found for user"));
+                .orElseGet(() -> createProfile(userId));
     }
 
     public UserProfileEntity updateProfile(UUID userId, String username, String bio) {
