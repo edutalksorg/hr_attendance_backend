@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/megamart
+    url: hr-attendance-db.c9y2cc6ecww1.ap-south-1.rds.amazonaws.com/hr_attendance
     username: postgres
-    password: 2520009
+    password: hr-attendance-99999
     driver-class-name: org.postgresql.Driver
 
   jpa:
