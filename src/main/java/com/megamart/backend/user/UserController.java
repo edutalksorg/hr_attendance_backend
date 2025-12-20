@@ -61,14 +61,14 @@ public class UserController {
     }
 
     @PostMapping("/block/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('HR')")
     public ResponseEntity<Void> block(@PathVariable @NonNull UUID id) {
         userService.blockUser(id);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/unblock/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('HR')")
     public ResponseEntity<Void> unblock(@PathVariable @NonNull UUID id) {
         userService.unblockUser(id);
         return ResponseEntity.ok().build();

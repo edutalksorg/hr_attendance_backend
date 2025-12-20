@@ -9,4 +9,5 @@ public class UpdateAttendanceRequest {
     private OffsetDateTime checkIn;
     private OffsetDateTime checkOut;
     private String remark;
+    private java.util.UUID userId; // Added to support manual creation where userId is needed
 }

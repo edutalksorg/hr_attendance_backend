@@ -9,6 +9,9 @@ import java.util.UUID;
 public class NotificationRequest {
     private String userId; // Optional for broadcast, String to allow manual parsing validation if needed
 
+    private java.util.List<String> userIds; // For multiple users
+    private String teamId; // For team-based notifications
+
     @NotBlank(message = "Title is required")
     @Size(max = 500, message = "Title cannot exceed 500 characters")
     private String title;

@@ -72,4 +72,23 @@ public class NotificationService {
             }
         }
     }
+
+    // BATCH SEND
+    public void sendBatch(List<UUID> userIds, String title, String message, String type) {
+        if (userIds == null)
+            return;
+        for (UUID uid : userIds) {
+            send(uid, title, message, type);
+        }
+    }
+
+    // TEAM SEND
+    private final com.megamart.backend.teams.TeamMemberRepository teamMemberRepository;
+
+    public void sendToTeam(UUID teamId, String title, String message, String type) {
+        List<com.megamart.backend.teams.TeamMember> members = teamMemberRepository.findByTeamId(teamId);
+        for (com.megamart.backend.teams.TeamMember m : members) {
+            send(m.getUserId(), title, message, type);
+        }
+    }
 }

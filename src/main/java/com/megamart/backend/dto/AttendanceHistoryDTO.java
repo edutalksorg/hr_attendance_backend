@@ -13,6 +13,7 @@ import java.time.OffsetDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AttendanceHistoryDTO {
+    private java.util.UUID id;
     private LocalDate date;
     private OffsetDateTime checkIn;
     private OffsetDateTime checkOut;

@@ -21,13 +21,27 @@ public class NotificationController {
     @PreAuthorize("hasAnyRole('ADMIN','HR')")
     public ResponseEntity<?> send(@RequestBody @jakarta.validation.Valid NotificationRequest request) {
         try {
-            UUID parsedUserId = UUID.fromString(request.getUserId());
-            Notification n = service.send(parsedUserId, request.getTitle(), request.getMessage(), request.getType());
-            return ResponseEntity.status(201).body(n);
+            if (request.getUserIds() != null && !request.getUserIds().isEmpty()) {
+                List<UUID> uids = request.getUserIds().stream().map(UUID::fromString).toList();
+                service.sendBatch(uids, request.getTitle(), request.getMessage(), request.getType());
+                return ResponseEntity.status(201).body(java.util.Map.of("message", "Batch notification sent"));
+            } else if (request.getTeamId() != null && !request.getTeamId().isEmpty()) {
+                UUID teamId = UUID.fromString(request.getTeamId());
+                service.sendToTeam(teamId, request.getTitle(), request.getMessage(), request.getType());
+                return ResponseEntity.status(201).body(java.util.Map.of("message", "Team notification sent"));
+            } else if (request.getUserId() != null && !request.getUserId().isEmpty()) {
+                UUID parsedUserId = UUID.fromString(request.getUserId());
+                Notification n = service.send(parsedUserId, request.getTitle(), request.getMessage(),
+                        request.getType());
+                return ResponseEntity.status(201).body(n);
+            } else {
+                return ResponseEntity.badRequest()
+                        .body(java.util.Map.of("error", "Recipient (userId, userIds, or teamId) is required"));
+            }
         } catch (IllegalArgumentException e) {
-            System.err.println("Invalid UUID format for userId: " + request.getUserId());
+            System.err.println("Invalid UUID format: " + e.getMessage());
             return ResponseEntity.badRequest().body(java.util.Map.of(
-                    "error", "Invalid user ID format",
+                    "error", "Invalid ID format",
                     "message", e.getMessage()));
         } catch (Exception e) {
             System.err.println("Error sending notification: " + e.getMessage());

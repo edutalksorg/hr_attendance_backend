@@ -168,6 +168,7 @@ public class AttendanceService {
             }
 
             history.add(com.megamart.backend.dto.AttendanceHistoryDTO.builder()
+                    .id(att != null ? att.getId() : null)
                     .date(date)
                     .checkIn(att != null ? att.getLoginTime() : null)
                     .checkOut(att != null ? att.getLogoutTime() : null)
@@ -264,6 +265,7 @@ public class AttendanceService {
         }
 
         return com.megamart.backend.dto.AttendanceHistoryDTO.builder()
+                .id(att != null ? att.getId() : null)
                 .date(date)
                 .checkIn(att != null ? att.getLoginTime() : null)
                 .checkOut(att != null ? att.getLogoutTime() : null)
@@ -375,6 +377,39 @@ public class AttendanceService {
             } catch (Exception e) {
             }
         }
+
+        return attendanceRepository.save(a);
+    }
+
+    public Attendance createManualAttendance(UUID userId, com.megamart.backend.dto.UpdateAttendanceRequest req) {
+        // If checkIn is provided, check efficiently for duplicates on that day?
+        // For now, simplify: just create it. The user intends to add a record.
+        // Or if ID is passed? No, this is for new creation.
+
+        OffsetDateTime checkIn = req.getCheckIn() != null ? req.getCheckIn() : OffsetDateTime.now(); // Fallback if
+                                                                                                     // missing, but
+                                                                                                     // should be there
+
+        java.util.Map<String, Object> meta = new java.util.HashMap<>();
+        if (req.getStatus() != null)
+            meta.put("status", req.getStatus());
+        if (req.getRemark() != null)
+            meta.put("remark", req.getRemark());
+
+        String metaJson = "{}";
+        try {
+            metaJson = objectMapper.writeValueAsString(meta);
+        } catch (Exception e) {
+        }
+
+        Attendance a = Attendance.builder()
+                .userId(userId)
+                .loginTime(checkIn)
+                .logoutTime(req.getCheckOut())
+                .metadata(metaJson)
+                .createdAt(OffsetDateTime.now())
+                .ipAddress("Manual Entry")
+                .build();
 
         return attendanceRepository.save(a);
     }

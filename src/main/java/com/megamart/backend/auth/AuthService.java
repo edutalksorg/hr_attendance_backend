@@ -39,7 +39,8 @@ public class AuthService {
 
         // Check if email already exists
         if (userRepository.existsByEmail(req.getEmail())) {
-            throw new RuntimeException("Email already registered");
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.CONFLICT, "Email already registered");
         }
 
         // Determine role and status based on admin secret code
@@ -112,7 +113,8 @@ public class AuthService {
             User user = userRepository.findByEmail(req.getEmail())
                     .orElseThrow(() -> {
                         logger.warn("❌ User not found: {}", req.getEmail());
-                        return new RuntimeException("Invalid credentials");
+                        return new org.springframework.web.server.ResponseStatusException(
+                                org.springframework.http.HttpStatus.UNAUTHORIZED, "Invalid credentials");
                     });
 
             logger.info("✅ User found: {} (Role: {}, Status: {})",
@@ -120,12 +122,15 @@ public class AuthService {
 
             if (user.getPassword() == null) {
                 logger.error("❌ User has null password: {}", req.getEmail());
-                throw new RuntimeException("Account data corrupted (missing password). Please contact admin.");
+                throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR,
+                        "Account data corrupted (missing password). Please contact admin.");
             }
 
             if (!passwordEncoder.matches(req.getPassword(), user.getPassword())) {
                 logger.warn("❌ Password mismatch for user: {}", req.getEmail());
-                throw new RuntimeException("Invalid credentials");
+                throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.UNAUTHORIZED, "Invalid credentials");
             }
 
             logger.info("✅ Password validated for user: {}", req.getEmail());
@@ -134,26 +139,32 @@ public class AuthService {
             // Handle null status gracefully (treat as PENDING or invalid)
             if (user.getStatus() == null) {
                 logger.error("❌ User has null status: {}", req.getEmail());
-                throw new RuntimeException("Account status unknown. Please contact admin.");
+                throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR,
+                        "Account status unknown. Please contact admin.");
             }
 
             // 1. Check if user is blocked FIRST
             if (user.getStatus() == UserStatus.BLOCKED) {
                 logger.warn("❌ Blocked user attempted login: {}", req.getEmail());
-                throw new RuntimeException("You are blocked by admin");
+                throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.FORBIDDEN, "Contact admin you are blocked");
             }
 
             // 2. Check if user approval is pending
             if (user.getStatus() == UserStatus.PENDING) {
                 logger.warn("❌ Pending user attempted login: {}", req.getEmail());
-                throw new RuntimeException("Your approval is not completed. Please contact Admin/HR.");
+                throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.FORBIDDEN,
+                        "Your approval is not completed. Please contact Admin/HR.");
             }
 
             // 3. Only ACTIVE users can login
             if (user.getStatus() != UserStatus.ACTIVE) {
                 logger.warn("❌ Inactive user attempted login: {} (Status: {})",
                         req.getEmail(), user.getStatus());
-                throw new RuntimeException("Account not active. Please contact admin.");
+                throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.FORBIDDEN, "Account not active. Please contact admin.");
             }
 
             // Record last login/IP for ALL users roles
@@ -181,13 +192,16 @@ public class AuthService {
     public AuthResponse refresh(String refreshToken) {
 
         RefreshToken r = refreshTokenRepository.findByToken(refreshToken)
-                .orElseThrow(() -> new RuntimeException("Invalid refresh token"));
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.UNAUTHORIZED, "Invalid refresh token"));
 
         if (r.isRevoked())
-            throw new RuntimeException("Token revoked");
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Token revoked");
 
         if (r.getExpiresAt().isBefore(OffsetDateTime.now())) {
-            throw new RuntimeException("Refresh token expired");
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Refresh token expired");
         }
 
         User user = r.getUser();
@@ -211,7 +225,8 @@ public class AuthService {
     // ----------------------------------------------
     public void forgotPassword(String email) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "User not found with email: " + email));
 
         // Generate token
         String token = UUID.randomUUID().toString();
@@ -254,10 +269,12 @@ public class AuthService {
 
     public void resetPassword(String token, String newPassword) {
         PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(token)
-                .orElseThrow(() -> new RuntimeException("Invalid token"));
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.BAD_REQUEST, "Invalid token"));
 
         if (resetToken.isExpired()) {
-            throw new RuntimeException("Token expired");
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "Token expired");
         }
 
         User user = resetToken.getUser();
@@ -275,10 +292,12 @@ public class AuthService {
     @Transactional
     public void changePassword(String email, ChangePasswordRequest req) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
 
         if (!passwordEncoder.matches(req.getOldPassword(), user.getPassword())) {
-            throw new RuntimeException("Invalid current password");
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Invalid current password");
         }
 
         user.setPassword(passwordEncoder.encode(req.getNewPassword()));

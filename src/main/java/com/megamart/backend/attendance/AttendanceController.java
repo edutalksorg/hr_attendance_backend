@@ -42,6 +42,16 @@ public class AttendanceController {
         return ResponseEntity.ok(attendanceService.updateAttendance(id, request));
     }
 
+    @PostMapping("/manual")
+    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    public ResponseEntity<Attendance> createManual(
+            @RequestBody com.megamart.backend.dto.UpdateAttendanceRequest request) {
+        if (request.getUserId() == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(attendanceService.createManualAttendance(request.getUserId(), request));
+    }
+
     @PostMapping("/track/{userId}")
     @PreAuthorize("hasAnyRole('MARKETING_EXECUTIVE')")
     public ResponseEntity<Void> trackSession(@PathVariable UUID userId,
