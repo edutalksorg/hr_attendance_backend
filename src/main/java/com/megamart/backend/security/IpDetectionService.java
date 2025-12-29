@@ -32,10 +32,9 @@ public class IpDetectionService {
             try {
                 logger.info("Local IP detected ({}), fetching public IP from ipify...", ip);
                 // "https://api.ipify.org?format=json" returns {"ip":"..."}
-                Map<String, String> response = restTemplate.getForObject("https://api.ipify.org?format=json",
-                        Map.class);
+                Map<?, ?> response = restTemplate.getForObject("https://api.ipify.org?format=json", Map.class);
                 if (response != null && response.containsKey("ip")) {
-                    ip = response.get("ip");
+                    ip = (String) response.get("ip");
                     logger.info("Public IP fetched: {}", ip);
                 }
             } catch (Exception e) {

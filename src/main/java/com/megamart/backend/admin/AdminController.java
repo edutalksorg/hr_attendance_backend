@@ -38,7 +38,7 @@ public class AdminController {
     }
 
     @GetMapping("/attendance/all")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('HR')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER')")
     public ResponseEntity<List<Attendance>> allAttendance() {
         return ResponseEntity.ok(attendanceRepository.findAll());
     }
@@ -81,7 +81,7 @@ public class AdminController {
     }
 
     @GetMapping("/dashboard/stats")
-    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER')")
     public ResponseEntity<DashboardStatsDTO> dashboardStats() {
         long employees = userRepository.count();
         long teams = teamRepository.count();

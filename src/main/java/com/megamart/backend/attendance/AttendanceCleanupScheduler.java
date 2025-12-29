@@ -1,14 +1,12 @@
 package com.megamart.backend.attendance;
 
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
 import lombok.RequiredArgsConstructor;
 import java.time.OffsetDateTime;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Component
+// @Component // Disabled in favor of GeneralDataCleanupScheduler
 @RequiredArgsConstructor
 public class AttendanceCleanupScheduler {
 
@@ -16,7 +14,7 @@ public class AttendanceCleanupScheduler {
     private final AttendanceRepository attendanceRepository;
 
     // Run every day at midnight (00:00:00)
-    @Scheduled(cron = "0 0 0 * * ?")
+    // @Scheduled(cron = "0 0 0 * * ?")
     @Transactional
     public void cleanupOldAttendance() {
         logger.info("Starting scheduled cleanup of old attendance records (older than 60 days)...");

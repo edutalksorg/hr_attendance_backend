@@ -57,7 +57,7 @@ public class JwtService {
                 .setClaims(claims)
                 .setSubject(user.getEmail())
                 .setIssuedAt(Date.from(Instant.now()))
-                .setExpiration(Date.from(Instant.now().plus(2, ChronoUnit.HOURS)))
+                .setExpiration(Date.from(Instant.now().plus(15, ChronoUnit.MINUTES)))
                 .signWith(getSignKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
@@ -67,7 +67,7 @@ public class JwtService {
         return Jwts.builder()
                 .setSubject(username)
                 .setIssuedAt(Date.from(Instant.now()))
-                .setExpiration(Date.from(Instant.now().plus(2, ChronoUnit.HOURS)))
+                .setExpiration(Date.from(Instant.now().plus(15, ChronoUnit.MINUTES)))
                 .signWith(getSignKey(), SignatureAlgorithm.HS256)
                 .compact();
     }

@@ -106,4 +106,10 @@ public class HelpdeskService {
     public List<TicketComment> getComments(UUID ticketId) {
         return commentRepository.findByTicketIdOrderByCreatedAtAsc(ticketId);
     }
+
+    public void deleteTicket(UUID ticketId) {
+        SupportTicket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new RuntimeException("Ticket not found"));
+        ticketRepository.delete(ticket);
+    }
 }

@@ -14,7 +14,6 @@ import org.slf4j.LoggerFactory;
 @RestController
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
-@SuppressWarnings("null")
 public class UserController {
 
     private static final Logger logger = LoggerFactory.getLogger(UserController.class);
@@ -22,7 +21,7 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping("/all")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('HR') or hasRole('EMPLOYEE') or hasRole('MARKETING_EXECUTIVE')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER','EMPLOYEE','MARKETING_EXECUTIVE')")
     public ResponseEntity<List<User>> allUsers() {
         try {
             return ResponseEntity.ok(userService.listAll());
@@ -33,14 +32,14 @@ public class UserController {
     }
 
     @GetMapping("/grouped")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('HR')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER')")
     public ResponseEntity<java.util.Map<String, List<User>>> groupedUsers() {
         return ResponseEntity.ok(userService.listAll().stream()
                 .collect(java.util.stream.Collectors.groupingBy(u -> u.getRole().name())));
     }
 
     @GetMapping("/role/{role}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('HR')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER')")
     public ResponseEntity<List<User>> usersByRole(@PathVariable String role) {
         try {
             UserRole userRole = UserRole.valueOf(role.toUpperCase());
@@ -51,7 +50,7 @@ public class UserController {
     }
 
     @PostMapping("/approve/{targetId}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('HR')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER')")
     public ResponseEntity<User> approve(@PathVariable("targetId") @NonNull UUID target) {
         String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication()
                 .getName();
@@ -61,14 +60,14 @@ public class UserController {
     }
 
     @PostMapping("/block/{id}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('HR')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER')")
     public ResponseEntity<Void> block(@PathVariable @NonNull UUID id) {
         userService.blockUser(id);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/unblock/{id}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('HR')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER')")
     public ResponseEntity<Void> unblock(@PathVariable @NonNull UUID id) {
         userService.unblockUser(id);
         return ResponseEntity.ok().build();

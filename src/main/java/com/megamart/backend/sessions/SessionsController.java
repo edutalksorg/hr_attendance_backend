@@ -22,7 +22,7 @@ public class SessionsController {
     private final UserRepository userRepository;
 
     @GetMapping("/me")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER','EMPLOYEE')")
     public ResponseEntity<List<SessionDto>> mySessions() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
@@ -34,14 +34,16 @@ public class SessionsController {
     }
 
     @PostMapping("/revoke")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER','EMPLOYEE')")
     public ResponseEntity<Void> revoke(@RequestParam String token) {
         // allow ADMIN to revoke any token; others can only revoke their own
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User requester = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
 
-        RefreshToken r = refreshTokenRepository.findByToken(token).orElseThrow(() -> new RuntimeException("Token not found"));
-        if (requester.getRole() != com.megamart.backend.user.UserRole.ADMIN && !r.getUser().getId().equals(requester.getId())) {
+        RefreshToken r = refreshTokenRepository.findByToken(token)
+                .orElseThrow(() -> new RuntimeException("Token not found"));
+        if (requester.getRole() != com.megamart.backend.user.UserRole.ADMIN
+                && !r.getUser().getId().equals(requester.getId())) {
             return ResponseEntity.status(403).build();
         }
 

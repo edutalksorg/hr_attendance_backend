@@ -8,4 +8,6 @@ public interface PerformanceReviewRepository extends JpaRepository<PerformanceRe
     List<PerformanceReview> findByUser_Id(UUID userId);
 
     List<PerformanceReview> findByUser_IdIn(List<UUID> userIds);
+
+    void deleteByCreatedAtBefore(java.time.OffsetDateTime timestamp);
 }

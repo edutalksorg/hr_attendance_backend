@@ -16,19 +16,19 @@ public class PerformanceController {
     private final com.megamart.backend.user.UserService userService;
 
     @GetMapping("/goals/{userId}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER','EMPLOYEE','MARKETING_EXECUTIVE')")
     public ResponseEntity<List<PerformanceGoal>> getUserGoals(@PathVariable UUID userId) {
         return ResponseEntity.ok(performanceService.getUserGoals(userId));
     }
 
     @PostMapping("/goals/{userId}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER')")
     public ResponseEntity<PerformanceGoal> createGoal(@PathVariable UUID userId, @RequestBody PerformanceGoal goal) {
         return ResponseEntity.ok(performanceService.createGoal(userId, goal));
     }
 
     @PutMapping("/goals/{goalId}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER','EMPLOYEE','MARKETING_EXECUTIVE')")
     public ResponseEntity<PerformanceGoal> updateGoal(@PathVariable UUID goalId, @RequestBody PerformanceGoal goal) {
         // Validation logic for permissions can be added (e.g. Employee can only update
         // progress)
@@ -36,26 +36,26 @@ public class PerformanceController {
     }
 
     @DeleteMapping("/goals/{goalId}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER')")
     public ResponseEntity<Void> deleteGoal(@PathVariable UUID goalId) {
         performanceService.deleteGoal(goalId);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/reviews/{userId}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER','EMPLOYEE','MARKETING_EXECUTIVE')")
     public ResponseEntity<List<PerformanceReview>> getUserReviews(@PathVariable UUID userId) {
         return ResponseEntity.ok(performanceService.getReviews(userId));
     }
 
     @GetMapping("/reviews/all")
-    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER')")
     public ResponseEntity<List<PerformanceReview>> getAllReviews() {
         return ResponseEntity.ok(performanceService.getAllReviews());
     }
 
     @PostMapping("/reviews/{userId}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER','EMPLOYEE','MARKETING_EXECUTIVE')")
     public ResponseEntity<PerformanceReview> addReview(
             @PathVariable UUID userId,
             @RequestBody PerformanceReview review) {
@@ -68,14 +68,14 @@ public class PerformanceController {
     }
 
     @DeleteMapping("/reviews/{reviewId}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER')")
     public ResponseEntity<Void> deleteReview(@PathVariable UUID reviewId) {
         performanceService.deleteReview(reviewId);
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/reviews/filter")
-    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER')")
     public ResponseEntity<List<PerformanceReview>> filterReviews(@RequestBody ReviewFilterRequest request) {
         return ResponseEntity.ok(performanceService.getReviewsByFilter(request.teamId(), request.userIds()));
     }

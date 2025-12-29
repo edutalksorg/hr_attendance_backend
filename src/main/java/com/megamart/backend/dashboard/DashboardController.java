@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 
 @RestController
 @RequestMapping("/api/v1/dashboard")
@@ -28,34 +27,26 @@ public class DashboardController {
     private final TeamRepository teamRepository;
 
     @GetMapping("/stats")
-    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER')")
     public ResponseEntity<DashboardStatsDTO> getStats() {
         long totalEmployees = userRepository.countByRole(UserRole.EMPLOYEE);
         long totalHR = userRepository.countByRole(UserRole.HR);
         long totalMarketing = userRepository.countByRole(UserRole.MARKETING_EXECUTIVE);
         long totalAdmins = userRepository.countByRole(UserRole.ADMIN);
+        long totalManagers = userRepository.countByRole(UserRole.MANAGER);
 
         LocalDate today = LocalDate.now();
-        OffsetDateTime startOfDay = today.atStartOfDay().atOffset(ZoneOffset.UTC); // Assuming UTC for simplicity or
-                                                                                   // adjust to system zone
-        // For better accuracy, use system default zone or configured zone
-        // OffsetDateTime.now() uses system clock, so let's use:
-        OffsetDateTime start = LocalDate.now().atStartOfDay().atOffset(OffsetDateTime.now().getOffset());
+        OffsetDateTime start = today.atStartOfDay().atOffset(OffsetDateTime.now().getOffset());
         OffsetDateTime end = start.plusDays(1);
 
         long presentToday = attendanceRepository.countDistinctUserIdByLoginTimeBetween(start, end);
         long onLeave = leaveRequestRepository.countUsersOnLeave(today);
         long pendingLeaves = leaveRequestRepository.countByStatus("PENDING");
         long totalTeams = teamRepository.count();
-        long technicalTeamCount = userRepository.countByRole(UserRole.EMPLOYEE);
-
-        // Refine marketing count if there is 'MARKETING' role too
-        // long marketingManager = userRepository.countByRole(Role.MARKETING);
-        // totalMarketing += marketingManager;
+        long technicalTeamCount = totalEmployees; // tech is synonymous with employees here
 
         return ResponseEntity.ok(new DashboardStatsDTO(
-                userRepository.count(), // total users or just employees? Frontend seems to label as "Total Employees"
-                                        // but logic used users.length
+                totalEmployees + totalHR + totalMarketing + totalAdmins + totalManagers, // Total users
                 totalHR,
                 totalMarketing,
                 presentToday,

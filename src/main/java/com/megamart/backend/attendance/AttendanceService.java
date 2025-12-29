@@ -9,7 +9,6 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-@SuppressWarnings("null")
 public class AttendanceService {
     private final AttendanceRepository attendanceRepository;
     private final com.megamart.backend.user.UserRepository userRepository;
@@ -108,8 +107,9 @@ public class AttendanceService {
                 if (att.getMetadata() != null && !att.getMetadata().isEmpty()) {
                     try {
                         java.util.Map<String, Object> meta = objectMapper.readValue(att.getMetadata(),
-                                java.util.Map.class);
-                        if (meta.containsKey("status")) {
+                                new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, Object>>() {
+                                });
+                        if (meta != null && meta.containsKey("status")) {
                             status = (String) meta.get("status");
                             remark = status;
                         }
@@ -159,9 +159,16 @@ public class AttendanceService {
             java.util.List<java.util.Map<String, String>> ipHistory = null;
             if (att != null && att.getMetadata() != null && !att.getMetadata().isEmpty()) {
                 try {
-                    java.util.Map<String, Object> meta = objectMapper.readValue(att.getMetadata(), java.util.Map.class);
-                    if (meta.containsKey("ipHistory")) {
-                        ipHistory = (java.util.List<java.util.Map<String, String>>) meta.get("ipHistory");
+                    java.util.Map<String, Object> meta = objectMapper.readValue(att.getMetadata(),
+                            new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, Object>>() {
+                            });
+                    if (meta != null && meta.containsKey("ipHistory")) {
+                        Object historyObj = meta.get("ipHistory");
+                        if (historyObj instanceof java.util.List) {
+                            @SuppressWarnings("unchecked")
+                            java.util.List<java.util.Map<String, String>> casted = (java.util.List<java.util.Map<String, String>>) historyObj;
+                            ipHistory = casted;
+                        }
                     }
                 } catch (Exception e) {
                 }
@@ -229,8 +236,10 @@ public class AttendanceService {
 
             if (att.getMetadata() != null && !att.getMetadata().isEmpty()) {
                 try {
-                    java.util.Map<String, Object> meta = objectMapper.readValue(att.getMetadata(), java.util.Map.class);
-                    if (meta.containsKey("status")) {
+                    java.util.Map<String, Object> meta = objectMapper.readValue(att.getMetadata(),
+                            new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, Object>>() {
+                            });
+                    if (meta != null && meta.containsKey("status")) {
                         status = (String) meta.get("status");
                         remark = status;
                     }
@@ -256,9 +265,16 @@ public class AttendanceService {
         java.util.List<java.util.Map<String, String>> ipHistory = null;
         if (att != null && att.getMetadata() != null && !att.getMetadata().isEmpty()) {
             try {
-                java.util.Map<String, Object> meta = objectMapper.readValue(att.getMetadata(), java.util.Map.class);
-                if (meta.containsKey("ipHistory")) {
-                    ipHistory = (java.util.List<java.util.Map<String, String>>) meta.get("ipHistory");
+                java.util.Map<String, Object> meta = objectMapper.readValue(att.getMetadata(),
+                        new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, Object>>() {
+                        });
+                if (meta != null && meta.containsKey("ipHistory")) {
+                    Object historyObj = meta.get("ipHistory");
+                    if (historyObj instanceof java.util.List) {
+                        @SuppressWarnings("unchecked")
+                        java.util.List<java.util.Map<String, String>> casted = (java.util.List<java.util.Map<String, String>>) historyObj;
+                        ipHistory = casted;
+                    }
                 }
             } catch (Exception e) {
             }
@@ -279,13 +295,6 @@ public class AttendanceService {
     }
 
     // Removed objectMapper field since it's now injected at class level
-
-    @org.springframework.scheduling.annotation.Scheduled(cron = "0 0 0 * * *")
-    @org.springframework.transaction.annotation.Transactional
-    public void cleanupOldRecords() {
-        OffsetDateTime threshold = OffsetDateTime.now().minusDays(RETENTION_DAYS);
-        attendanceRepository.deleteByCreatedAtBefore(threshold);
-    }
 
     public void recordHourlyIp(UUID userId, String ip) {
         Attendance a = attendanceRepository.findTopByUserIdAndLogoutTimeIsNullOrderByLoginTimeDesc(userId)
@@ -344,7 +353,9 @@ public class AttendanceService {
             try {
                 java.util.Map<String, Object> meta;
                 if (a.getMetadata() != null && !a.getMetadata().isEmpty()) {
-                    meta = objectMapper.readValue(a.getMetadata(), java.util.Map.class);
+                    meta = objectMapper.readValue(a.getMetadata(),
+                            new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, Object>>() {
+                            });
                 } else {
                     meta = new java.util.HashMap<>();
                 }
@@ -368,7 +379,9 @@ public class AttendanceService {
             try {
                 java.util.Map<String, Object> meta;
                 if (a.getMetadata() != null && !a.getMetadata().isEmpty()) {
-                    meta = objectMapper.readValue(a.getMetadata(), java.util.Map.class);
+                    meta = objectMapper.readValue(a.getMetadata(),
+                            new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, Object>>() {
+                            });
                 } else {
                     meta = new java.util.HashMap<>();
                 }

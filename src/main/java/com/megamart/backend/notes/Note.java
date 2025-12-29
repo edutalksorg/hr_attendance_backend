@@ -15,7 +15,7 @@ import java.util.UUID;
 @Builder
 public class Note {
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(name = "user_id", nullable = false)
@@ -29,6 +29,10 @@ public class Note {
 
     @Column(columnDefinition = "text")
     private String body;
+
+    @Builder.Default
+    @Column(name = "is_pinned", nullable = false)
+    private boolean pinned = false;
 
     @Builder.Default
     @Column(name = "created_at")

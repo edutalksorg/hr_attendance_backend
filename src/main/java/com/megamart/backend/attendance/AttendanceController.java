@@ -10,14 +10,13 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/attendance")
 @RequiredArgsConstructor
-@SuppressWarnings("null")
 public class AttendanceController {
 
     private final AttendanceService attendanceService;
     private final com.megamart.backend.security.IpDetectionService ipService;
 
     @PostMapping("/login/{userId}")
-    @PreAuthorize("hasAnyRole('EMPLOYEE','HR','ADMIN','MARKETING_EXECUTIVE')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','HR','ADMIN','MANAGER','MARKETING_EXECUTIVE')")
     public ResponseEntity<Attendance> login(@PathVariable UUID userId,
             @RequestHeader(value = "X-User-Agent", required = false) String ua,
             jakarta.servlet.http.HttpServletRequest request) {
@@ -27,7 +26,7 @@ public class AttendanceController {
     }
 
     @PostMapping("/logout/{attendanceId}")
-    @PreAuthorize("hasAnyRole('EMPLOYEE','HR','ADMIN','MARKETING_EXECUTIVE')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','HR','ADMIN','MANAGER','MARKETING_EXECUTIVE')")
     public ResponseEntity<Attendance> logout(@PathVariable UUID attendanceId,
             jakarta.servlet.http.HttpServletRequest request) {
         String ipAddr = ipService.getClientIp(request);
@@ -35,7 +34,7 @@ public class AttendanceController {
     }
 
     @PutMapping("/update/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER')")
     public ResponseEntity<Attendance> updateAttendance(
             @PathVariable UUID id,
             @RequestBody com.megamart.backend.dto.UpdateAttendanceRequest request) {
@@ -43,7 +42,7 @@ public class AttendanceController {
     }
 
     @PostMapping("/manual")
-    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER')")
     public ResponseEntity<Attendance> createManual(
             @RequestBody com.megamart.backend.dto.UpdateAttendanceRequest request) {
         if (request.getUserId() == null) {
@@ -62,32 +61,32 @@ public class AttendanceController {
     }
 
     @GetMapping("/history/{userId}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER','EMPLOYEE','MARKETING_EXECUTIVE')")
     public ResponseEntity<List<Attendance>> history(@PathVariable UUID userId) {
         return ResponseEntity.ok(attendanceService.getHistory(userId));
     }
 
     @GetMapping("/history/60days/{userId}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER','EMPLOYEE','MARKETING_EXECUTIVE')")
     public ResponseEntity<List<com.megamart.backend.dto.AttendanceHistoryDTO>> history60Days(
             @PathVariable UUID userId) {
         return ResponseEntity.ok(attendanceService.getAttendanceHistoryLast60Days(userId));
     }
 
     @GetMapping("/all")
-    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER')")
     public ResponseEntity<List<Attendance>> all() {
         return ResponseEntity.ok(attendanceService.listAll());
     }
 
     @GetMapping("/stats/{userId}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER','EMPLOYEE','MARKETING_EXECUTIVE')")
     public ResponseEntity<AttendanceService.AttendanceStatsDTO> stats(@PathVariable UUID userId) {
         return ResponseEntity.ok(attendanceService.getStats(userId));
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER','EMPLOYEE','MARKETING_EXECUTIVE')")
     public ResponseEntity<com.megamart.backend.dto.AttendanceHistoryDTO> getByDate(
             @RequestParam UUID userId,
             @RequestParam java.time.LocalDate date) {

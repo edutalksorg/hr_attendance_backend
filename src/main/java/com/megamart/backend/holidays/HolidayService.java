@@ -10,7 +10,6 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-@SuppressWarnings("null")
 public class HolidayService {
     private final HolidayRepository repo;
 

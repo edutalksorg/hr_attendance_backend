@@ -7,5 +7,8 @@ import java.util.UUID;
 
 public interface NoteRepository extends JpaRepository<Note, UUID> {
     List<Note> findByUserIdOrderByCreatedAtDesc(UUID userId);
+
     List<Note> findByTeamIdOrderByCreatedAtDesc(UUID teamId);
+
+    void deleteByCreatedAtBefore(java.time.OffsetDateTime timestamp);
 }

@@ -16,7 +16,6 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-@SuppressWarnings("null")
 public class AuthService {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
@@ -35,15 +34,18 @@ public class AuthService {
     // ----------------------------------------------
     // REGISTER
     // ----------------------------------------------
+    @Transactional
     public AuthResponse register(RegisterRequest req) {
+        logger.info("📝 Registration attempt for email: {}, role: {}", req.getEmail(), req.getRole());
 
         // Check if email already exists
         if (userRepository.existsByEmail(req.getEmail())) {
+            logger.warn("❌ Registration failed: Email {} already exists", req.getEmail());
             throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.CONFLICT, "Email already registered");
         }
 
-        // Determine role and status based on admin secret code
+        // Determine role and status
         UserRole role = UserRole.EMPLOYEE;
         UserStatus status = UserStatus.PENDING;
 
@@ -56,9 +58,9 @@ public class AuthService {
                 }
                 UserRole requestedRole = UserRole.valueOf(normalizedRole);
                 role = requestedRole;
+                logger.info("✅ Requested role '{}' mapped to {}", req.getRole(), role);
             } catch (IllegalArgumentException e) {
-                // specific role not found, defaulting to EMPLOYEE
-                logger.warn("Requested role '{}' not found, defaulting to EMPLOYEE", req.getRole());
+                logger.warn("⚠️ Requested role '{}' not found, defaulting to EMPLOYEE", req.getRole());
             }
         }
 
@@ -66,40 +68,51 @@ public class AuthService {
                 .fullName(req.getFullName())
                 .email(req.getEmail())
                 .password(passwordEncoder.encode(req.getPassword()))
+                .phone(req.getPhone())
                 .role(role)
                 .status(status)
                 .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())
-                .locationJson(null)
                 .build();
 
-        userRepository.save(user);
+        try {
+            user = userRepository.save(user);
+            logger.info("✅ User saved with ID: {}", user.getId());
 
-        // Create approval request if PENDING
-        if (status == UserStatus.PENDING) {
-            Approval ap = Approval.builder()
-                    .targetUserId(user.getId())
-                    .approvalType("REGISTRATION")
-                    .roleAfter(role) // Save the requested role so Admin knows what to approve
-                    .status("PENDING")
-                    .createdAt(OffsetDateTime.now())
-                    .build();
-            approvalRepository.save(ap);
+            // Create approval request if PENDING
+            if (status == UserStatus.PENDING) {
+                Approval ap = Approval.builder()
+                        .targetUserId(user.getId())
+                        .approvalType("REGISTRATION")
+                        .roleAfter(role)
+                        .status("PENDING")
+                        .createdAt(OffsetDateTime.now())
+                        .build();
+                approvalRepository.save(ap);
+                logger.info("✅ Approval request created for user: {}", user.getId());
+            }
+
+            // Auto-create user profile
+            profileService.createProfile(user.getId());
+            logger.info("✅ User profile created for user: {}", user.getId());
+
+            // Only return tokens if user is ACTIVE (admins)
+            if (user.getStatus() == UserStatus.PENDING) {
+                logger.info("⌛ Registration complete. User {} is pending approval.", user.getEmail());
+                return new AuthResponse(null, null, null);
+            }
+
+            String access = jwtService.generateToken(user);
+            String refresh = createRefreshToken(user);
+
+            logger.info("🎉 Registration successful for ACTIVE user: {}", user.getEmail());
+            return new AuthResponse(access, refresh, user);
+        } catch (Exception e) {
+            logger.error("💥 Registration failed for {}: {}", req.getEmail(), e.getMessage(), e);
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Registration failed: " + e.getMessage());
         }
-
-        // Auto-create user profile
-        profileService.createProfile(user.getId());
-
-        // Only return tokens if user is ACTIVE (admins)
-        // PENDING users do NOT get tokens, ensuring they cannot access the app
-        if (user.getStatus() == UserStatus.PENDING) {
-            return new AuthResponse(null, null, null);
-        }
-
-        String access = jwtService.generateToken(user);
-        String refresh = createRefreshToken(user);
-
-        return new AuthResponse(access, refresh, user);
     }
 
     // ----------------------------------------------
@@ -189,6 +202,7 @@ public class AuthService {
     // ----------------------------------------------
     // REFRESH TOKEN
     // ----------------------------------------------
+    @Transactional
     public AuthResponse refresh(String refreshToken) {
 
         RefreshToken r = refreshTokenRepository.findByToken(refreshToken)
@@ -200,11 +214,15 @@ public class AuthService {
                     org.springframework.http.HttpStatus.UNAUTHORIZED, "Token revoked");
 
         if (r.getExpiresAt().isBefore(OffsetDateTime.now())) {
+            refreshTokenRepository.delete(r);
             throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.UNAUTHORIZED, "Refresh token expired");
         }
 
         User user = r.getUser();
+
+        // Rotation: Delete the old token
+        refreshTokenRepository.delete(r);
 
         String newAccess = jwtService.generateToken(user);
         String newRefresh = createRefreshToken(user);

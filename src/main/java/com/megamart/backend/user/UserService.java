@@ -8,7 +8,6 @@ import org.springframework.lang.NonNull;
 import java.util.List;
 import java.util.UUID;
 import java.util.Map;
-import java.util.stream.Collectors;
 import com.megamart.backend.profile.UserProfileEntity;
 
 import org.slf4j.Logger;
@@ -16,7 +15,6 @@ import org.slf4j.LoggerFactory;
 
 @Service
 @RequiredArgsConstructor
-@SuppressWarnings("null")
 public class UserService {
 
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);

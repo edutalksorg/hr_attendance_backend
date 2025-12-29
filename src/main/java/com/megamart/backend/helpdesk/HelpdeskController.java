@@ -15,7 +15,7 @@ public class HelpdeskController {
     private final HelpdeskService helpdeskService;
 
     @PostMapping("/tickets")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER','EMPLOYEE','MARKETING_EXECUTIVE')")
     public ResponseEntity<?> createTicket(@RequestBody SupportTicket ticket) {
         try {
             String email = org.springframework.security.core.context.SecurityContextHolder.getContext()
@@ -28,19 +28,19 @@ public class HelpdeskController {
     }
 
     @GetMapping("/tickets/my/{userId}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER','EMPLOYEE','MARKETING_EXECUTIVE')")
     public ResponseEntity<List<SupportTicket>> getMyTickets(@PathVariable UUID userId) {
         return ResponseEntity.ok(helpdeskService.getUserTickets(userId));
     }
 
     @GetMapping("/tickets/all")
-    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER')")
     public ResponseEntity<List<SupportTicket>> getAllTickets() {
         return ResponseEntity.ok(helpdeskService.getAllTickets());
     }
 
     @PutMapping("/tickets/{id}/status")
-    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER')")
     public ResponseEntity<SupportTicket> updateStatus(
             @PathVariable UUID id,
             @RequestParam String status,
@@ -49,7 +49,7 @@ public class HelpdeskController {
     }
 
     @PostMapping("/tickets/{id}/comments")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER','EMPLOYEE','MARKETING_EXECUTIVE')")
     public ResponseEntity<TicketComment> addComment(
             @PathVariable UUID id,
             @RequestBody com.fasterxml.jackson.databind.JsonNode payload) {
@@ -59,8 +59,19 @@ public class HelpdeskController {
     }
 
     @GetMapping("/tickets/{id}/comments")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER','EMPLOYEE','MARKETING_EXECUTIVE')")
     public ResponseEntity<List<TicketComment>> getTicketComments(@PathVariable UUID id) {
         return ResponseEntity.ok(helpdeskService.getComments(id));
+    }
+
+    @DeleteMapping("/tickets/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER','EMPLOYEE','MARKETING_EXECUTIVE')")
+    public ResponseEntity<?> deleteTicket(@PathVariable UUID id) {
+        try {
+            helpdeskService.deleteTicket(id);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Error deleting ticket: " + e.getMessage());
+        }
     }
 }

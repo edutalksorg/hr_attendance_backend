@@ -8,4 +8,6 @@ public interface SupportTicketRepository extends JpaRepository<SupportTicket, UU
     List<SupportTicket> findByRequesterId(UUID requesterId);
 
     List<SupportTicket> findByAssignedToId(UUID assignedToId);
+
+    void deleteByCreatedAtBefore(java.time.OffsetDateTime timestamp);
 }

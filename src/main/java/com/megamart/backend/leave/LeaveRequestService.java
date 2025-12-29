@@ -11,7 +11,6 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-@SuppressWarnings("null")
 public class LeaveRequestService {
     private final LeaveRequestRepository repository;
 
@@ -62,5 +61,13 @@ public class LeaveRequestService {
         lr.setApprovedAt(OffsetDateTime.now());
         lr.setUpdatedAt(OffsetDateTime.now());
         return repository.save(lr);
+    }
+
+    public void deleteLeaveRequest(UUID id) {
+        repository.deleteById(id);
+    }
+
+    public List<LeaveRequest> getAllLeaveRequests() {
+        return repository.findAll();
     }
 }

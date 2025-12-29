@@ -2,9 +2,12 @@ package com.megamart.backend.documents;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.util.List;
 import java.util.UUID;
 
 public interface DocumentRepository extends JpaRepository<Document, UUID> {
-    List<Document> findByUserIdOrderByCreatedAtDesc(UUID userId);
+    java.util.List<Document> findByUserIdOrderByCreatedAtDesc(UUID userId);
+
+    void deleteByCreatedAtBefore(java.time.OffsetDateTime timestamp);
+
+    java.util.List<Document> findByCreatedAtBefore(java.time.OffsetDateTime timestamp);
 }

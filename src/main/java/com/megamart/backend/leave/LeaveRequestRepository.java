@@ -17,4 +17,6 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, UUID
     List<LeaveRequest> findApprovedLeavesForDate(java.time.LocalDate date);
 
     long countByStatus(String status);
+
+    void deleteByCreatedAtBefore(java.time.OffsetDateTime timestamp);
 }

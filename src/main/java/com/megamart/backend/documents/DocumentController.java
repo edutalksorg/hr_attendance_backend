@@ -6,23 +6,18 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.lang.NonNull;
 
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/documents")
 @RequiredArgsConstructor
-@SuppressWarnings("null")
 public class DocumentController {
 
     private final DocumentService service;
 
     @PostMapping(consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER','EMPLOYEE','MARKETING_EXECUTIVE')")
     public ResponseEntity<Document> upload(@RequestParam("file") org.springframework.web.multipart.MultipartFile file,
             @RequestParam("type") String type,
             @RequestParam(value = "targetUserId", required = false) UUID targetUserId,
@@ -40,7 +35,7 @@ public class DocumentController {
 
         if (targetUserId != null) {
             // Only Admin/HR can upload for others
-            if (role.equalsIgnoreCase("ADMIN") || role.equalsIgnoreCase("HR")) {
+            if (role.equalsIgnoreCase("ADMIN") || role.equalsIgnoreCase("HR") || role.equalsIgnoreCase("MANAGER")) {
                 ownerId = targetUserId;
             } else {
                 // Return 403 if normal user tries to upload for others
@@ -53,14 +48,15 @@ public class DocumentController {
     }
 
     @GetMapping("/all")
-    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER')")
     public ResponseEntity<List<Document>> listAll() {
         return ResponseEntity.ok(service.listAll());
     }
 
     @GetMapping("/download/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')") // Check ownership logic inside service
-                                                                               // or here?
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER','EMPLOYEE','MARKETING_EXECUTIVE')") // Check ownership logic inside
+                                                                                         // service
+    // or here?
     public ResponseEntity<org.springframework.core.io.Resource> download(@PathVariable UUID id,
             org.springframework.security.core.Authentication auth) {
         Document doc = service.get(id);
@@ -70,7 +66,8 @@ public class DocumentController {
                 .getPrincipal();
         String role = principal.getAuthorities().stream().findFirst().get().getAuthority();
 
-        if (!role.contains("ADMIN") && !role.contains("HR") && !doc.getUserId().equals(principal.getUser().getId())) {
+        if (!role.contains("ADMIN") && !role.contains("HR") && !role.contains("MANAGER")
+                && !doc.getUserId().equals(principal.getUser().getId())) {
             return ResponseEntity.status(403).build();
         }
 
@@ -83,27 +80,28 @@ public class DocumentController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER','EMPLOYEE','MARKETING_EXECUTIVE')")
     public ResponseEntity<Document> get(@PathVariable @NonNull UUID id) {
         return ResponseEntity.ok(service.get(id));
     }
 
     @GetMapping("/user/{userId}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE','MARKETING_EXECUTIVE')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER','EMPLOYEE','MARKETING_EXECUTIVE')")
     public ResponseEntity<List<Document>> listForUser(@PathVariable @NonNull UUID userId,
             org.springframework.security.core.Authentication auth) {
         com.megamart.backend.security.CustomUserDetails principal = (com.megamart.backend.security.CustomUserDetails) auth
                 .getPrincipal(); // FIX: Explicit cast
         String role = principal.getAuthorities().stream().findFirst().get().getAuthority();
 
-        if (!role.contains("ADMIN") && !role.contains("HR") && !userId.equals(principal.getUser().getId())) {
+        if (!role.contains("ADMIN") && !role.contains("HR") && !role.contains("MANAGER")
+                && !userId.equals(principal.getUser().getId())) {
             return ResponseEntity.status(403).build();
         }
         return ResponseEntity.ok(service.listForUser(userId));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER')")
     public ResponseEntity<Void> delete(@PathVariable @NonNull UUID id) {
         service.delete(id);
         return ResponseEntity.ok().build();

@@ -10,7 +10,6 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-@SuppressWarnings("null")
 public class TeamService {
     private final TeamRepository teamRepository;
     private final TeamMemberRepository memberRepository;

@@ -1,6 +1,5 @@
 package com.megamart.backend.documents;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
@@ -9,7 +8,6 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
-@SuppressWarnings("null")
 public class DocumentService {
     private final DocumentRepository repository;
     private final com.megamart.backend.notification.NotificationService notificationService;
@@ -100,6 +98,15 @@ public class DocumentService {
     }
 
     public void delete(@NonNull UUID id) {
-        repository.deleteById(id);
+        repository.findById(id).ifPresent(doc -> {
+            try {
+                java.nio.file.Path path = java.nio.file.Paths.get(doc.getFilePath());
+                java.nio.file.Files.deleteIfExists(path);
+            } catch (Exception e) {
+                // Log but continue
+                System.err.println("Failed to delete physical file: " + doc.getFilePath());
+            }
+            repository.delete(doc);
+        });
     }
 }

@@ -17,8 +17,10 @@ public class PayrollController {
     private final PayrollService service;
 
     @GetMapping("/calculate")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE')")
-    public ResponseEntity<PayrollDto> calculate(@RequestParam UUID userId, @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @NotNull LocalDate start, @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @NotNull LocalDate end) {
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER','EMPLOYEE')")
+    public ResponseEntity<PayrollDto> calculate(@RequestParam UUID userId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @NotNull LocalDate start,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @NotNull LocalDate end) {
         return ResponseEntity.ok(service.calculate(userId, start, end));
     }
 }

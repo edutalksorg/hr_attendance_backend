@@ -23,7 +23,6 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/v1/leave")
 @RequiredArgsConstructor
-@SuppressWarnings("null")
 public class LeaveController {
     private final LeaveRequestService service;
     private final UserRepository userRepository;
@@ -37,7 +36,7 @@ public class LeaveController {
     }
 
     @PostMapping("/request")
-    @PreAuthorize("hasAnyRole('EMPLOYEE','MARKETING_EXECUTIVE','HR','ADMIN')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','MARKETING_EXECUTIVE','HR','ADMIN','MANAGER')")
     public ResponseEntity<LeaveRequestDto> requestLeave(@RequestBody RequestLeaveReq req) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
@@ -47,7 +46,7 @@ public class LeaveController {
     }
 
     @GetMapping("/my-requests")
-    @PreAuthorize("hasAnyRole('EMPLOYEE','MARKETING_EXECUTIVE','HR','ADMIN')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','MARKETING_EXECUTIVE','HR','ADMIN','MANAGER')")
     public ResponseEntity<List<LeaveRequestDto>> getMyLeaveRequests() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
@@ -56,15 +55,23 @@ public class LeaveController {
     }
 
     @GetMapping("/pending")
-    @PreAuthorize("hasAnyRole('HR','ADMIN')")
+    @PreAuthorize("hasAnyRole('HR','ADMIN','MANAGER')")
     public ResponseEntity<List<LeaveRequestDto>> getPendingLeaveRequests() {
         List<LeaveRequestDto> requests = service.getPendingLeaveRequests().stream().map(this::toDto)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(requests);
     }
 
+    @GetMapping("/all")
+    @PreAuthorize("hasAnyRole('HR','ADMIN','MANAGER')")
+    public ResponseEntity<List<LeaveRequestDto>> getAllLeaveRequests() {
+        List<LeaveRequestDto> requests = service.getAllLeaveRequests().stream().map(this::toDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(requests);
+    }
+
     @GetMapping("/approved")
-    @PreAuthorize("hasAnyRole('HR','ADMIN')")
+    @PreAuthorize("hasAnyRole('HR','ADMIN','MANAGER')")
     public ResponseEntity<List<LeaveRequestDto>> getApprovedLeaves(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         if (date == null) {
@@ -76,21 +83,21 @@ public class LeaveController {
     }
 
     @GetMapping("/user/{userId}")
-    @PreAuthorize("hasAnyRole('HR','ADMIN')")
+    @PreAuthorize("hasAnyRole('HR','ADMIN','MANAGER')")
     public ResponseEntity<List<LeaveRequestDto>> getLeavesForUser(@PathVariable UUID userId) {
         List<LeaveRequest> requests = service.getUserLeaveRequests(userId);
         return ResponseEntity.ok(requests.stream().map(this::toDto).collect(Collectors.toList()));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('EMPLOYEE','MARKETING_EXECUTIVE','HR','ADMIN')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','MARKETING_EXECUTIVE','HR','ADMIN','MANAGER')")
     public ResponseEntity<LeaveRequestDto> getLeaveRequest(@PathVariable @NonNull UUID id) {
         LeaveRequest lr = service.getLeaveRequest(id);
         return ResponseEntity.ok(toDto(lr));
     }
 
     @PostMapping("/{id}/approve")
-    @PreAuthorize("hasAnyRole('HR','ADMIN')")
+    @PreAuthorize("hasAnyRole('HR','ADMIN','MANAGER')")
     public ResponseEntity<LeaveRequestDto> approveLeaveRequest(@PathVariable @NonNull UUID id) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User approver = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
@@ -99,12 +106,19 @@ public class LeaveController {
     }
 
     @PostMapping("/{id}/reject")
-    @PreAuthorize("hasAnyRole('HR','ADMIN')")
+    @PreAuthorize("hasAnyRole('HR','ADMIN','MANAGER')")
     public ResponseEntity<LeaveRequestDto> rejectLeaveRequest(@PathVariable @NonNull UUID id) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User approver = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
         LeaveRequest lr = service.rejectLeaveRequest(id, approver.getId());
         return ResponseEntity.ok(toDto(lr));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('HR','ADMIN','MANAGER')")
+    public ResponseEntity<Void> deleteLeaveRequest(@PathVariable @NonNull UUID id) {
+        service.deleteLeaveRequest(id);
+        return ResponseEntity.noContent().build();
     }
 
     private LeaveRequestDto toDto(LeaveRequest lr) {

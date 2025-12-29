@@ -13,7 +13,6 @@ import java.time.OffsetDateTime;
 
 @Component
 @RequiredArgsConstructor
-@SuppressWarnings("null")
 public class DataInitializer implements CommandLineRunner {
 
     private final UserRepository userRepository;

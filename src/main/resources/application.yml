@@ -4,7 +4,7 @@ spring:
     username: postgres
     password: hr-attendance-99999
     driver-class-name: org.postgresql.Driver
-
+ 
   jpa:
     hibernate:
       ddl-auto: update
@@ -12,10 +12,10 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-
+ 
   flyway:
     enabled: false
-
+ 
   # Email Configuration
   mail:
     host: smtp.gmail.com
@@ -28,13 +28,11 @@ spring:
           auth: true
           starttls:
             enable: true
-
+ 
   servlet:
     multipart:
       max-file-size: 20GB
       max-request-size: 20GB
-
+ 
 server:
   port: 9090
-
-

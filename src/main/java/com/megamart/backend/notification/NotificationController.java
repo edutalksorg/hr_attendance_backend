@@ -12,13 +12,12 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/notifications")
 @RequiredArgsConstructor
-@SuppressWarnings("null")
 public class NotificationController {
 
     private final NotificationService service;
 
     @PostMapping("/send")
-    @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER')")
     public ResponseEntity<?> send(@RequestBody @jakarta.validation.Valid NotificationRequest request) {
         try {
             if (request.getUserIds() != null && !request.getUserIds().isEmpty()) {
@@ -53,20 +52,20 @@ public class NotificationController {
     }
 
     @GetMapping("/{userId}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER','EMPLOYEE')")
     public ResponseEntity<List<Notification>> list(@PathVariable @NonNull UUID userId) {
         return ResponseEntity.ok(service.list(userId));
     }
 
     @PostMapping("/read/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER','EMPLOYEE')")
     public ResponseEntity<Void> markRead(@PathVariable @NonNull UUID id) {
         service.markRead(id);
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/my-notifications")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','EMPLOYEE')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER','EMPLOYEE')")
     public ResponseEntity<List<Notification>> getMyNotifications() {
         // Extract user from token - for now admin only test version
         // In production, use
@@ -75,7 +74,7 @@ public class NotificationController {
     }
 
     @PostMapping("/broadcast")
-    @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER')")
     public ResponseEntity<?> broadcastNotification(@RequestBody @jakarta.validation.Valid NotificationRequest request) {
         try {
             service.broadcast(request.getTitle(), request.getMessage(), request.getType());

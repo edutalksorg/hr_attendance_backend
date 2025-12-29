@@ -26,7 +26,7 @@ public class NavigationController {
     }
 
     @GetMapping("/history/{userId}")
-    @PreAuthorize("hasAnyRole('ADMIN','HR','MARKETING_EXECUTIVE')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER','MARKETING_EXECUTIVE')")
     public ResponseEntity<List<NavigationLog>> history(@PathVariable UUID userId) {
         return ResponseEntity.ok(service.history(userId));
     }

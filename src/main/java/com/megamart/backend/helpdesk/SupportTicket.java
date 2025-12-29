@@ -50,4 +50,7 @@ public class SupportTicket {
 
     @Column(columnDefinition = "TEXT")
     private String attachmentUrl;
+
+    @OneToMany(mappedBy = "ticket", cascade = CascadeType.ALL, orphanRemoval = true)
+    private java.util.List<TicketComment> comments;
 }
