@@ -32,7 +32,7 @@ public class Note {
 
     @Builder.Default
     @Column(name = "is_pinned", nullable = false)
-    private boolean pinned = false;
+    private Boolean pinned = false;
 
     @Builder.Default
     @Column(name = "created_at")
@@ -41,4 +41,8 @@ public class Note {
     @Builder.Default
     @Column(name = "updated_at")
     private OffsetDateTime updatedAt = OffsetDateTime.now();
+
+    public boolean isPinned() {
+        return pinned != null && pinned;
+    }
 }

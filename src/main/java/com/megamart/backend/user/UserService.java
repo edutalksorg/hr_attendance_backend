@@ -24,6 +24,7 @@ public class UserService {
     private final PasswordEncoder encoder;
     private final com.megamart.backend.profile.UserProfileRepository userProfileRepository;
     private final com.megamart.backend.notification.NotificationService notificationService;
+    private final com.megamart.backend.branch.BranchRepository branchRepository;
 
     public User registerEmployee(String fullName, String email, String phone, String rawPassword, UserRole role) {
         if (userRepository.existsByEmail(email)) {
@@ -34,22 +35,11 @@ public class UserService {
                 .email(email)
                 .phone(phone)
                 .password(encoder.encode(rawPassword))
-                .role(role) // Use the provided role instead of hardcoding EMPLOYEE
-                .status(UserStatus.PENDING)
+                .role(role)
+                .status(UserStatus.ACTIVE)
                 .createdAt(OffsetDateTime.now())
                 .build();
-        userRepository.save(u);
-
-        // create an approval entry with the requested role
-        Approval ap = Approval.builder()
-                .targetUserId(u.getId())
-                .approvalType("REGISTRATION")
-                .roleAfter(role) // Store the requested role for admin reference
-                .status("PENDING")
-                .createdAt(OffsetDateTime.now())
-                .build();
-        approvalRepository.save(ap);
-        return u;
+        return userRepository.save(u);
     }
 
     public List<User> listAll() {
@@ -59,7 +49,7 @@ public class UserService {
             return users;
         } catch (Exception e) {
             logger.error("Error listing all users", e);
-            throw e; // Rethrow to let the controller handle it (or return empty list if preferred)
+            throw e;
         }
     }
 
@@ -88,7 +78,6 @@ public class UserService {
             });
         } catch (Exception e) {
             logger.error("Error populating user photos", e);
-            // Non-critical, swallow exception to return user data at least
         }
     }
 
@@ -97,37 +86,22 @@ public class UserService {
     }
 
     public User approveUser(@NonNull UUID approverId, @NonNull UUID targetUserId) {
-        // Get approver and target user
         User approver = userRepository.findById(approverId)
                 .orElseThrow(() -> new RuntimeException("Approver not found"));
         User target = userRepository.findById(targetUserId)
                 .orElseThrow(() -> new RuntimeException("Target user not found"));
 
-        // ⚠️ CRITICAL: Role-Based Approval Validation
-        // Check the target user's EXISTING role (not changing it)
-        if (approver.getRole() == UserRole.HR) {
-            // HR can ONLY approve EMPLOYEE and MARKETING roles
+        if (approver.getRole() == UserRole.HR || approver.getRole() == UserRole.MANAGER) {
             if (target.getRole() != UserRole.EMPLOYEE && target.getRole() != UserRole.MARKETING_EXECUTIVE) {
-                throw new RuntimeException("HR can only approve Employee and Marketing roles.");
-            }
-
-            // HR cannot approve users with ADMIN or HR role
-            if (target.getRole() == UserRole.ADMIN || target.getRole() == UserRole.HR) {
-                throw new RuntimeException("You do not have permission to approve this role.");
+                throw new RuntimeException("You can only approve Employee and Marketing roles.");
             }
         }
 
-        // ADMIN can approve all roles (no restrictions)
-        // If approver is ADMIN, all approvals are allowed
-
-        // ✅ DO NOT CHANGE ROLE - Only update status to ACTIVE
-        // The role was already set correctly during registration
         target.setStatus(UserStatus.ACTIVE);
         target.setApprovedBy(approverId);
         target.setApprovedAt(OffsetDateTime.now());
         userRepository.save(target);
 
-        // Update approval record(s)
         approvalRepository.findByTargetUserId(targetUserId).forEach(ap -> {
             ap.setStatus("APPROVED");
             ap.setApprovedBy(approverId);
@@ -135,39 +109,76 @@ public class UserService {
             approvalRepository.save(ap);
         });
 
-        // Notify
-        notificationService.send(targetUserId, "Account Approved", "Your account has been approved. You can now login.",
-                "SUCCESS");
-
+        notificationService.send(targetUserId, "Account Approved", "Your account has been approved.", "SUCCESS");
         return target;
     }
 
     public void blockUser(@NonNull UUID userId) {
-        User u = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User u = userRepository.findById(userId).orElseThrow();
         u.setStatus(UserStatus.BLOCKED);
         u.setUpdatedAt(OffsetDateTime.now());
         userRepository.save(u);
         notificationService.send(userId, "Account Blocked", "Your account has been blocked by admin.", "ERROR");
     }
 
-    public void unblockUser(@NonNull UUID userId) {
-        User u = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+    @org.springframework.transaction.annotation.Transactional
+    public void unblockUser(UUID id) {
+        User u = userRepository.findById(id).orElseThrow();
         u.setStatus(UserStatus.ACTIVE);
         u.setUpdatedAt(OffsetDateTime.now());
         userRepository.save(u);
-        notificationService.send(userId, "Account Unblocked", "Your account has been unblocked.", "SUCCESS");
     }
 
-    public void deleteUser(@NonNull UUID userId) {
-        User u = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+    @org.springframework.transaction.annotation.Transactional
+    public void deleteUser(UUID id) {
+        userRepository.deleteById(id);
+    }
 
-        // Delete all related approval records first
-        approvalRepository.findByTargetUserId(userId).forEach(approvalRepository::delete);
+    @org.springframework.transaction.annotation.Transactional
+    public User transferUserToBranch(@NonNull UUID userId, @NonNull UUID branchId) {
+        User user = userRepository.findById(userId).orElseThrow();
+        com.megamart.backend.branch.Branch branch = branchRepository.findById(branchId).orElseThrow();
+        user.setBranch(branch);
+        user.setUpdatedAt(OffsetDateTime.now());
+        notificationService.send(userId, "Branch Transfer", "You have been transferred to " + branch.getName(), "INFO");
+        return userRepository.save(user);
+    }
 
-        // Delete the user completely from database
-        userRepository.delete(u);
+    public List<User> findByBranch(UUID branchId) {
+        return userRepository.findAll().stream()
+                .filter(u -> u.getBranch() != null && u.getBranch().getId().equals(branchId))
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public User updateGeoRestriction(UUID id, com.megamart.backend.dto.GeoRestrictionRequest request) {
+        User u = userRepository.findById(id).orElseThrow();
+        u.setGeoRestrictionEnabled(request.isEnabled());
+        u.setOfficeLatitude(request.getLatitude());
+        u.setOfficeLongitude(request.getLongitude());
+        u.setGeoRadius(request.getRadius());
+        u.setUpdatedAt(OffsetDateTime.now());
+        return userRepository.save(u);
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public void bulkUpdateGeoRestriction(List<UUID> userIds, com.megamart.backend.dto.GeoRestrictionRequest data) {
+        List<User> users = userRepository.findAllById(userIds);
+        users.forEach(u -> {
+            u.setGeoRestrictionEnabled(data.isEnabled());
+            u.setOfficeLatitude(data.getLatitude());
+            u.setOfficeLongitude(data.getLongitude());
+            u.setGeoRadius(data.getRadius());
+            u.setUpdatedAt(OffsetDateTime.now());
+        });
+        userRepository.saveAll(users);
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public User updateJoiningDate(UUID userId, java.time.LocalDate date) {
+        User u = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+        u.setJoiningDate(date);
+        u.setUpdatedAt(OffsetDateTime.now());
+        return userRepository.save(u);
     }
 }

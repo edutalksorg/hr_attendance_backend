@@ -36,5 +36,9 @@ public class RefreshToken {
 
     @Builder.Default
     @Column(nullable = false)
-    private boolean revoked = false;
+    private Boolean revoked = false;
+
+    public boolean isRevoked() {
+        return revoked != null && revoked;
+    }
 }

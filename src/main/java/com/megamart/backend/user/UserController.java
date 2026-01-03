@@ -80,6 +80,34 @@ public class UserController {
         return ResponseEntity.ok().build();
     }
 
+    @PutMapping("/{id}/geo-restriction")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER')")
+    public ResponseEntity<User> updateGeoRestriction(
+            @PathVariable @NonNull UUID id,
+            @RequestBody com.megamart.backend.dto.GeoRestrictionRequest request) {
+        return ResponseEntity.ok(userService.updateGeoRestriction(id, request));
+    }
+
+    @PutMapping("/bulk/geo-restriction")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER')")
+    public ResponseEntity<Void> bulkUpdateGeoRestriction(
+            @RequestBody com.megamart.backend.dto.BulkGeoRestrictionRequest request) {
+        userService.bulkUpdateGeoRestriction(request.getUserIds(), request.getData());
+        return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/{id}/branch/{branchId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<User> transferUser(@PathVariable UUID id, @PathVariable UUID branchId) {
+        return ResponseEntity.ok(userService.transferUserToBranch(id, branchId));
+    }
+
+    @GetMapping("/branch/{branchId}")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER')")
+    public ResponseEntity<List<User>> usersByBranch(@PathVariable UUID branchId) {
+        return ResponseEntity.ok(userService.findByBranch(branchId));
+    }
+
     private final com.megamart.backend.profile.UserProfileService profileService;
 
     @GetMapping("/me")
@@ -106,5 +134,16 @@ public class UserController {
     public ResponseEntity<String> debugAuthorities() {
         var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
         return ResponseEntity.ok("Authorities: " + auth.getAuthorities().toString() + ", Principal: " + auth.getName());
+    }
+
+    @PutMapping("/{id}/joining-date")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER')")
+    public ResponseEntity<User> updateJoiningDate(@PathVariable UUID id,
+            @RequestBody java.util.Map<String, String> payload) {
+        String dateStr = payload.get("joiningDate");
+        if (dateStr == null)
+            return ResponseEntity.badRequest().build();
+        java.time.LocalDate date = java.time.LocalDate.parse(dateStr); // Expects ISO-8601 YYYY-MM-DD
+        return ResponseEntity.ok(userService.updateJoiningDate(id, date));
     }
 }

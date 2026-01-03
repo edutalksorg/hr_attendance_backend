@@ -56,8 +56,9 @@ public class LeaveController {
 
     @GetMapping("/pending")
     @PreAuthorize("hasAnyRole('HR','ADMIN','MANAGER')")
-    public ResponseEntity<List<LeaveRequestDto>> getPendingLeaveRequests() {
-        List<LeaveRequestDto> requests = service.getPendingLeaveRequests().stream().map(this::toDto)
+    public ResponseEntity<List<LeaveRequestDto>> getPendingLeaveRequests(
+            @RequestParam(required = false) UUID branchId) {
+        List<LeaveRequestDto> requests = service.getPendingLeaveRequests(branchId).stream().map(this::toDto)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(requests);
     }
@@ -73,11 +74,12 @@ public class LeaveController {
     @GetMapping("/approved")
     @PreAuthorize("hasAnyRole('HR','ADMIN','MANAGER')")
     public ResponseEntity<List<LeaveRequestDto>> getApprovedLeaves(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) UUID branchId) {
         if (date == null) {
             date = LocalDate.now();
         }
-        List<LeaveRequestDto> requests = service.getApprovedLeaves(date).stream().map(this::toDto)
+        List<LeaveRequestDto> requests = service.getApprovedLeaves(date, branchId).stream().map(this::toDto)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(requests);
     }

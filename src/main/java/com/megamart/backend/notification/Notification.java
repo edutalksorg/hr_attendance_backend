@@ -30,8 +30,16 @@ public class Notification {
     private String type; // INFO | WARNING | SUCCESS | ERROR
 
     @Builder.Default
-    private boolean isRead = false;
+    private Boolean isRead = false;
 
     @Builder.Default
     private OffsetDateTime createdAt = OffsetDateTime.now();
+
+    public boolean isRead() {
+        return isRead != null && isRead;
+    }
+
+    public void setRead(boolean read) {
+        this.isRead = read;
+    }
 }

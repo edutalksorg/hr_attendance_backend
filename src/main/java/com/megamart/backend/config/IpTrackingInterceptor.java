@@ -6,18 +6,22 @@ import com.megamart.backend.user.User;
 import com.megamart.backend.user.UserRole;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 @Component
-@RequiredArgsConstructor
 public class IpTrackingInterceptor implements HandlerInterceptor {
 
     private final AttendanceService attendanceService;
     private final IpDetectionService ipService;
+
+    public IpTrackingInterceptor(AttendanceService attendanceService,
+            IpDetectionService ipService) {
+        this.attendanceService = attendanceService;
+        this.ipService = ipService;
+    }
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {

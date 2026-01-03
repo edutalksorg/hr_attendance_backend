@@ -37,11 +37,17 @@ public class LeaveRequestService {
         return repository.findByUserId(userId);
     }
 
-    public List<LeaveRequest> getPendingLeaveRequests() {
+    public List<LeaveRequest> getPendingLeaveRequests(UUID branchId) {
+        if (branchId != null) {
+            return repository.findByStatusAndBranchId("PENDING", branchId);
+        }
         return repository.findByStatus("PENDING");
     }
 
-    public List<LeaveRequest> getApprovedLeaves(LocalDate date) {
+    public List<LeaveRequest> getApprovedLeaves(LocalDate date, UUID branchId) {
+        if (branchId != null) {
+            return repository.findApprovedLeavesForDateAndBranchId(date, branchId);
+        }
         return repository.findApprovedLeavesForDate(date);
     }
 

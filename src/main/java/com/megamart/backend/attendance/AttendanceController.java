@@ -1,6 +1,5 @@
 package com.megamart.backend.attendance;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -9,19 +8,26 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/attendance")
-@RequiredArgsConstructor
 public class AttendanceController {
 
     private final AttendanceService attendanceService;
     private final com.megamart.backend.security.IpDetectionService ipService;
 
+    public AttendanceController(AttendanceService attendanceService,
+            com.megamart.backend.security.IpDetectionService ipService) {
+        this.attendanceService = attendanceService;
+        this.ipService = ipService;
+    }
+
     @PostMapping("/login/{userId}")
     @PreAuthorize("hasAnyRole('EMPLOYEE','HR','ADMIN','MANAGER','MARKETING_EXECUTIVE')")
     public ResponseEntity<Attendance> login(@PathVariable UUID userId,
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double lng,
             @RequestHeader(value = "X-User-Agent", required = false) String ua,
             jakarta.servlet.http.HttpServletRequest request) {
         String ipAddr = ipService.getClientIp(request);
-        Attendance a = attendanceService.recordLogin(userId, ipAddr, ua);
+        Attendance a = attendanceService.recordLogin(userId, ipAddr, ua, lat, lng);
         return ResponseEntity.ok(a);
     }
 
@@ -91,5 +97,12 @@ public class AttendanceController {
             @RequestParam UUID userId,
             @RequestParam java.time.LocalDate date) {
         return ResponseEntity.ok(attendanceService.getByDate(userId, date));
+    }
+
+    @GetMapping("/{userId}")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','MANAGER','EMPLOYEE','MARKETING_EXECUTIVE')")
+    public ResponseEntity<List<com.megamart.backend.dto.AttendanceHistoryDTO>> historyByUserId(
+            @PathVariable UUID userId) {
+        return ResponseEntity.ok(attendanceService.getAttendanceHistoryLast60Days(userId));
     }
 }

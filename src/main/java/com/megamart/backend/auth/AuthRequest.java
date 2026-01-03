@@ -7,4 +7,6 @@ public class AuthRequest {
     private String email;
     private String password;
     private String ipAddress;
+    private Double latitude;
+    private Double longitude;
 }

@@ -1,43 +1,100 @@
 package com.megamart.backend.attendance;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import java.time.OffsetDateTime;
+import java.time.LocalTime;
+import java.time.LocalDate;
+import java.time.Duration;
+import java.time.DayOfWeek;
 import org.springframework.lang.NonNull;
 import java.util.List;
 import java.util.UUID;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.stream.Collectors;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.megamart.backend.user.User;
+import com.megamart.backend.user.UserRepository;
+import com.megamart.backend.dto.AttendanceHistoryDTO;
+import com.megamart.backend.dto.UpdateAttendanceRequest;
+import com.megamart.backend.shift.Shift;
 
 @Service
-@RequiredArgsConstructor
 public class AttendanceService {
     private final AttendanceRepository attendanceRepository;
-    private final com.megamart.backend.user.UserRepository userRepository;
-    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+    private final UserRepository userRepository;
+    private final ObjectMapper objectMapper;
 
-    public Attendance recordLogin(@NonNull UUID userId, String ip, String userAgent) {
-        com.megamart.backend.user.User user = userRepository.findById(userId).orElseThrow();
-        java.time.LocalTime now = java.time.LocalTime.now();
+    public AttendanceService(AttendanceRepository attendanceRepository,
+            UserRepository userRepository,
+            ObjectMapper objectMapper) {
+        this.attendanceRepository = attendanceRepository;
+        this.userRepository = userRepository;
+        this.objectMapper = objectMapper;
+    }
+
+    public Attendance recordLogin(@NonNull UUID userId, String ip, String userAgent, Double lat, Double lng) {
+        User user = userRepository.findById(userId).orElseThrow();
+
+        // --- Geolocation Enforcement ---
+        if (Boolean.TRUE.equals(user.getGeoRestrictionEnabled())) {
+            if (lat == null || lng == null) {
+                throw new RuntimeException("Geolocation required: Signal loss detected.");
+            }
+
+            Double targetLat = user.getOfficeLatitude();
+            Double targetLng = user.getOfficeLongitude();
+            Double targetRadius = user.getGeoRadius();
+
+            // Branch Level Fallback: If individual coordinates are missing, use branch
+            // rules
+            if (targetLat == null && user.getBranch() != null) {
+                targetLat = user.getBranch().getLatitude();
+                targetLng = user.getBranch().getLongitude();
+                if (targetRadius == null || targetRadius == 50.0) { // Default radius override
+                    targetRadius = user.getBranch().getGeoRadius();
+                }
+            }
+
+            double officeLat = targetLat != null ? targetLat : 0.0;
+            double officeLng = targetLng != null ? targetLng : 0.0;
+            double radius = targetRadius != null ? targetRadius : 100.0;
+
+            double distance = calculateDistance(lat, lng, officeLat, officeLng);
+
+            if (distance > radius) {
+                throw new RuntimeException("Vector Breach: You are outside your authorized biometric perimeter.");
+            }
+        }
+
+        LocalTime now = LocalTime.now();
 
         String status = "Present";
         String shiftName = "Default";
 
         if (user.getShift() != null) {
             shiftName = user.getShift().getName();
-            java.time.LocalTime start = user.getShift().getStartTime();
+            LocalTime start = user.getShift().getStartTime();
             int grace = user.getShift().getLateGraceMinutes() != null ? user.getShift().getLateGraceMinutes() : 15;
             if (now.isAfter(start.plusMinutes(grace))) {
                 status = "Late";
             }
         } else {
             // Default 9:30 AM + 15 min grace = 9:45
-            if (now.isAfter(java.time.LocalTime.of(9, 45))) {
+            if (now.isAfter(LocalTime.of(9, 45))) {
                 status = "Late";
             }
         }
 
-        java.util.Map<String, Object> meta = new java.util.HashMap<>();
+        Map<String, Object> meta = new HashMap<>();
         meta.put("status", status);
         meta.put("shift", shiftName);
+        if (lat != null)
+            meta.put("lat", lat);
+        if (lng != null)
+            meta.put("lng", lng);
 
         String metaJson;
         try {
@@ -57,6 +114,17 @@ public class AttendanceService {
         return attendanceRepository.save(a);
     }
 
+    private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+        final int R = 6371; // Earth radius in km
+        double latDistance = Math.toRadians(lat2 - lat1);
+        double lonDistance = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                        * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c * 1000; // Distance in meters
+    }
+
     public Attendance recordLogout(@NonNull UUID attendanceId, String ipAddress) {
         Attendance a = attendanceRepository.findById(attendanceId).orElseThrow();
         a.setLogoutTime(OffsetDateTime.now());
@@ -72,29 +140,29 @@ public class AttendanceService {
 
     private static final int RETENTION_DAYS = 60;
 
-    public List<com.megamart.backend.dto.AttendanceHistoryDTO> getAttendanceHistoryLast60Days(UUID userId) {
-        com.megamart.backend.user.User user = userRepository.findById(userId).orElse(null);
+    public List<AttendanceHistoryDTO> getAttendanceHistoryLast60Days(UUID userId) {
+        User user = userRepository.findById(userId).orElse(null);
         OffsetDateTime end = OffsetDateTime.now();
         OffsetDateTime start = end.minusDays(RETENTION_DAYS);
 
         List<Attendance> records = attendanceRepository.findByUserIdAndLoginTimeBetweenOrderByLoginTimeDesc(userId,
                 start, end);
-        List<com.megamart.backend.dto.AttendanceHistoryDTO> history = new java.util.ArrayList<>();
+        List<AttendanceHistoryDTO> history = new ArrayList<>();
 
-        java.util.Map<java.time.LocalDate, Attendance> attendanceMap = records.stream()
-                .collect(java.util.stream.Collectors.toMap(
+        Map<LocalDate, Attendance> attendanceMap = records.stream()
+                .collect(Collectors.toMap(
                         a -> a.getLoginTime().toLocalDate(),
                         a -> a,
                         (existing, replacement) -> existing));
 
         for (int i = 0; i < RETENTION_DAYS; i++) {
-            java.time.LocalDate date = end.minusDays(i).toLocalDate();
+            LocalDate date = end.minusDays(i).toLocalDate();
             Attendance att = attendanceMap.get(date);
 
             String status = "Absent";
             String remark = "Absent";
 
-            if (date.getDayOfWeek() == java.time.DayOfWeek.SUNDAY) {
+            if (date.getDayOfWeek() == DayOfWeek.SUNDAY) {
                 status = "Holiday";
                 remark = "Sunday Holiday";
             }
@@ -106,8 +174,8 @@ public class AttendanceService {
                 // Check metadata for status
                 if (att.getMetadata() != null && !att.getMetadata().isEmpty()) {
                     try {
-                        java.util.Map<String, Object> meta = objectMapper.readValue(att.getMetadata(),
-                                new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, Object>>() {
+                        Map<String, Object> meta = objectMapper.readValue(att.getMetadata(),
+                                new TypeReference<Map<String, Object>>() {
                                 });
                         if (meta != null && meta.containsKey("status")) {
                             status = (String) meta.get("status");
@@ -117,14 +185,14 @@ public class AttendanceService {
                     }
                 } else {
                     // Fallback using shift rules
-                    java.time.LocalTime checkIn = att.getLoginTime().toLocalTime();
+                    LocalTime checkIn = att.getLoginTime().toLocalTime();
 
                     if (user != null && user.getShift() != null) {
                         try {
-                            com.megamart.backend.shift.Shift s = user.getShift();
-                            java.time.LocalTime shiftStart = s.getStartTime();
+                            Shift s = user.getShift();
+                            LocalTime shiftStart = s.getStartTime();
                             int grace = s.getLateGraceMinutes() != null ? s.getLateGraceMinutes() : 15;
-                            java.time.LocalTime limit = shiftStart.plusMinutes(grace);
+                            LocalTime limit = shiftStart.plusMinutes(grace);
 
                             if (checkIn.isAfter(limit)) {
                                 status = "Late";
@@ -148,7 +216,7 @@ public class AttendanceService {
                         }
                     } else {
                         // Default Rules
-                        if (checkIn.isAfter(java.time.LocalTime.of(9, 45))) {
+                        if (checkIn.isAfter(LocalTime.of(9, 45))) {
                             status = "Late";
                             remark = "Late Arrival";
                         }
@@ -156,17 +224,17 @@ public class AttendanceService {
                 }
             }
 
-            java.util.List<java.util.Map<String, String>> ipHistory = null;
+            List<Map<String, String>> ipHistory = null;
             if (att != null && att.getMetadata() != null && !att.getMetadata().isEmpty()) {
                 try {
-                    java.util.Map<String, Object> meta = objectMapper.readValue(att.getMetadata(),
-                            new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, Object>>() {
+                    Map<String, Object> meta = objectMapper.readValue(att.getMetadata(),
+                            new TypeReference<Map<String, Object>>() {
                             });
                     if (meta != null && meta.containsKey("ipHistory")) {
                         Object historyObj = meta.get("ipHistory");
-                        if (historyObj instanceof java.util.List) {
+                        if (historyObj instanceof List) {
                             @SuppressWarnings("unchecked")
-                            java.util.List<java.util.Map<String, String>> casted = (java.util.List<java.util.Map<String, String>>) historyObj;
+                            List<Map<String, String>> casted = (List<Map<String, String>>) historyObj;
                             ipHistory = casted;
                         }
                     }
@@ -174,7 +242,7 @@ public class AttendanceService {
                 }
             }
 
-            history.add(com.megamart.backend.dto.AttendanceHistoryDTO.builder()
+            history.add(AttendanceHistoryDTO.builder()
                     .id(att != null ? att.getId() : null)
                     .date(date)
                     .checkIn(att != null ? att.getLoginTime() : null)
@@ -198,7 +266,7 @@ public class AttendanceService {
     }
 
     public AttendanceStatsDTO getStats(UUID userId) {
-        List<com.megamart.backend.dto.AttendanceHistoryDTO> history = getAttendanceHistoryLast60Days(userId);
+        List<AttendanceHistoryDTO> history = getAttendanceHistoryLast60Days(userId);
 
         long workingDays = history.stream()
                 .filter(d -> !d.getStatus().contains("Holiday"))
@@ -218,14 +286,14 @@ public class AttendanceService {
         return new AttendanceStatsDTO(workingDays, present, late, rate);
     }
 
-    public com.megamart.backend.dto.AttendanceHistoryDTO getByDate(UUID userId, java.time.LocalDate date) {
+    public AttendanceHistoryDTO getByDate(UUID userId, LocalDate date) {
         OffsetDateTime start = date.atStartOfDay().atOffset(OffsetDateTime.now().getOffset());
         OffsetDateTime end = date.plusDays(1).atStartOfDay().atOffset(OffsetDateTime.now().getOffset());
 
         List<Attendance> records = attendanceRepository.findByUserIdAndLoginTimeBetweenOrderByLoginTimeDesc(userId,
                 start, end);
         Attendance att = records.isEmpty() ? null : records.get(0);
-        com.megamart.backend.user.User user = userRepository.findById(userId).orElse(null);
+        User user = userRepository.findById(userId).orElse(null);
 
         String status = "Absent";
         String remark = "No Data";
@@ -236,8 +304,8 @@ public class AttendanceService {
 
             if (att.getMetadata() != null && !att.getMetadata().isEmpty()) {
                 try {
-                    java.util.Map<String, Object> meta = objectMapper.readValue(att.getMetadata(),
-                            new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, Object>>() {
+                    Map<String, Object> meta = objectMapper.readValue(att.getMetadata(),
+                            new TypeReference<Map<String, Object>>() {
                             });
                     if (meta != null && meta.containsKey("status")) {
                         status = (String) meta.get("status");
@@ -246,8 +314,8 @@ public class AttendanceService {
                 } catch (Exception e) {
                 }
             } else {
-                java.time.LocalTime checkIn = att.getLoginTime().toLocalTime();
-                java.time.LocalTime limit = java.time.LocalTime.of(9, 45);
+                LocalTime checkIn = att.getLoginTime().toLocalTime();
+                LocalTime limit = LocalTime.of(9, 45);
                 if (user != null && user.getShift() != null) {
                     limit = user.getShift().getStartTime().plusMinutes(
                             user.getShift().getLateGraceMinutes() != null ? user.getShift().getLateGraceMinutes() : 15);
@@ -257,22 +325,22 @@ public class AttendanceService {
                     remark = "Late Arrival";
                 }
             }
-        } else if (date.getDayOfWeek() == java.time.DayOfWeek.SUNDAY) {
+        } else if (date.getDayOfWeek() == DayOfWeek.SUNDAY) {
             status = "Holiday";
             remark = "Sunday Holiday";
         }
 
-        java.util.List<java.util.Map<String, String>> ipHistory = null;
+        List<Map<String, String>> ipHistory = null;
         if (att != null && att.getMetadata() != null && !att.getMetadata().isEmpty()) {
             try {
-                java.util.Map<String, Object> meta = objectMapper.readValue(att.getMetadata(),
-                        new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, Object>>() {
+                Map<String, Object> meta = objectMapper.readValue(att.getMetadata(),
+                        new TypeReference<Map<String, Object>>() {
                         });
                 if (meta != null && meta.containsKey("ipHistory")) {
                     Object historyObj = meta.get("ipHistory");
-                    if (historyObj instanceof java.util.List) {
+                    if (historyObj instanceof List) {
                         @SuppressWarnings("unchecked")
-                        java.util.List<java.util.Map<String, String>> casted = (java.util.List<java.util.Map<String, String>>) historyObj;
+                        List<Map<String, String>> casted = (List<Map<String, String>>) historyObj;
                         ipHistory = casted;
                     }
                 }
@@ -280,7 +348,7 @@ public class AttendanceService {
             }
         }
 
-        return com.megamart.backend.dto.AttendanceHistoryDTO.builder()
+        return AttendanceHistoryDTO.builder()
                 .id(att != null ? att.getId() : null)
                 .date(date)
                 .checkIn(att != null ? att.getLoginTime() : null)
@@ -294,8 +362,6 @@ public class AttendanceService {
                 .build();
     }
 
-    // Removed objectMapper field since it's now injected at class level
-
     public void recordHourlyIp(UUID userId, String ip) {
         Attendance a = attendanceRepository.findTopByUserIdAndLogoutTimeIsNullOrderByLoginTimeDesc(userId)
                 .orElse(null);
@@ -303,25 +369,25 @@ public class AttendanceService {
             return;
 
         try {
-            java.util.Map<String, Object> meta;
+            Map<String, Object> meta;
             if (a.getMetadata() == null || a.getMetadata().isEmpty()) {
-                meta = new java.util.HashMap<>();
+                meta = new HashMap<>();
             } else {
                 meta = objectMapper.readValue(a.getMetadata(),
-                        new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, Object>>() {
+                        new TypeReference<Map<String, Object>>() {
                         });
             }
 
             @SuppressWarnings("unchecked")
-            java.util.List<java.util.Map<String, String>> history = (java.util.List<java.util.Map<String, String>>) meta
-                    .getOrDefault("ipHistory", new java.util.ArrayList<>());
+            List<Map<String, String>> history = (List<Map<String, String>>) meta
+                    .getOrDefault("ipHistory", new ArrayList<>());
 
             if (!history.isEmpty()) {
-                java.util.Map<String, String> last = history.get(history.size() - 1);
+                Map<String, String> last = history.get(history.size() - 1);
                 String lastTs = last.get("timestamp");
                 try {
                     OffsetDateTime lastTime = OffsetDateTime.parse(lastTs);
-                    if (java.time.Duration.between(lastTime, OffsetDateTime.now()).toMinutes() < 120) {
+                    if (Duration.between(lastTime, OffsetDateTime.now()).toMinutes() < 120) {
                         String lastIp = last.get("ip");
                         if (lastIp != null && lastIp.equals(ip)) {
                             return;
@@ -331,7 +397,7 @@ public class AttendanceService {
                 }
             }
 
-            java.util.Map<String, String> entry = new java.util.HashMap<>();
+            Map<String, String> entry = new HashMap<>();
             entry.put("timestamp", OffsetDateTime.now().toString());
             entry.put("ip", ip);
             history.add(entry);
@@ -344,20 +410,20 @@ public class AttendanceService {
         }
     }
 
-    public Attendance updateAttendance(UUID id, com.megamart.backend.dto.UpdateAttendanceRequest req) {
+    public Attendance updateAttendance(UUID id, UpdateAttendanceRequest req) {
         Attendance a = attendanceRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Attendance not found"));
 
         if (req.getStatus() != null) {
             // Update status in metadata
             try {
-                java.util.Map<String, Object> meta;
+                Map<String, Object> meta;
                 if (a.getMetadata() != null && !a.getMetadata().isEmpty()) {
                     meta = objectMapper.readValue(a.getMetadata(),
-                            new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, Object>>() {
+                            new TypeReference<Map<String, Object>>() {
                             });
                 } else {
-                    meta = new java.util.HashMap<>();
+                    meta = new HashMap<>();
                 }
                 meta.put("status", req.getStatus());
                 a.setMetadata(objectMapper.writeValueAsString(meta));
@@ -373,17 +439,15 @@ public class AttendanceService {
             a.setLogoutTime(req.getCheckOut());
         }
 
-        // If remarks are needed, they can be stored in metadata or a new field.
-        // For now, let's store remarks in metadata too if provided
         if (req.getRemark() != null) {
             try {
-                java.util.Map<String, Object> meta;
+                Map<String, Object> meta;
                 if (a.getMetadata() != null && !a.getMetadata().isEmpty()) {
                     meta = objectMapper.readValue(a.getMetadata(),
-                            new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, Object>>() {
+                            new TypeReference<Map<String, Object>>() {
                             });
                 } else {
-                    meta = new java.util.HashMap<>();
+                    meta = new HashMap<>();
                 }
                 meta.put("remark", req.getRemark());
                 a.setMetadata(objectMapper.writeValueAsString(meta));
@@ -394,16 +458,10 @@ public class AttendanceService {
         return attendanceRepository.save(a);
     }
 
-    public Attendance createManualAttendance(UUID userId, com.megamart.backend.dto.UpdateAttendanceRequest req) {
-        // If checkIn is provided, check efficiently for duplicates on that day?
-        // For now, simplify: just create it. The user intends to add a record.
-        // Or if ID is passed? No, this is for new creation.
+    public Attendance createManualAttendance(UUID userId, UpdateAttendanceRequest req) {
+        OffsetDateTime checkIn = req.getCheckIn() != null ? req.getCheckIn() : OffsetDateTime.now();
 
-        OffsetDateTime checkIn = req.getCheckIn() != null ? req.getCheckIn() : OffsetDateTime.now(); // Fallback if
-                                                                                                     // missing, but
-                                                                                                     // should be there
-
-        java.util.Map<String, Object> meta = new java.util.HashMap<>();
+        Map<String, Object> meta = new HashMap<>();
         if (req.getStatus() != null)
             meta.put("status", req.getStatus());
         if (req.getRemark() != null)

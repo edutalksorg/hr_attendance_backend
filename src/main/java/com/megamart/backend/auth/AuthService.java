@@ -28,6 +28,7 @@ public class AuthService {
     private final ApprovalRepository approvalRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final EmailService emailService;
+    private final com.megamart.backend.branch.BranchRepository branchRepository;
 
     // Admin Secret Code - Change this in production!
 
@@ -36,7 +37,8 @@ public class AuthService {
     // ----------------------------------------------
     @Transactional
     public AuthResponse register(RegisterRequest req) {
-        logger.info("📝 Registration attempt for email: {}, role: {}", req.getEmail(), req.getRole());
+        logger.info("📝 Registration attempt for email: {}, role: {}, branch: {}", req.getEmail(), req.getRole(),
+                req.getBranchId());
 
         // Check if email already exists
         if (userRepository.existsByEmail(req.getEmail())) {
@@ -47,7 +49,6 @@ public class AuthService {
 
         // Determine role and status
         UserRole role = UserRole.EMPLOYEE;
-        UserStatus status = UserStatus.PENDING;
 
         // Check if a specific role was requested
         if (req.getRole() != null && !req.getRole().isEmpty()) {
@@ -64,6 +65,18 @@ public class AuthService {
             }
         }
 
+        // Set status based on role
+        UserStatus status = UserStatus.ACTIVE;
+        if (role == UserRole.EMPLOYEE || role == UserRole.MARKETING_EXECUTIVE) {
+            status = UserStatus.PENDING;
+        }
+
+        // Branch Lookup
+        com.megamart.backend.branch.Branch branch = null;
+        if (req.getBranchId() != null) {
+            branch = branchRepository.findById(req.getBranchId()).orElse(null);
+        }
+
         User user = User.builder()
                 .fullName(req.getFullName())
                 .email(req.getEmail())
@@ -71,6 +84,7 @@ public class AuthService {
                 .phone(req.getPhone())
                 .role(role)
                 .status(status)
+                .branch(branch)
                 .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())
                 .build();
@@ -118,6 +132,7 @@ public class AuthService {
     // ----------------------------------------------
     // LOGIN
     // ----------------------------------------------
+    @Transactional
     public AuthResponse login(AuthRequest req, String ip) {
 
         logger.info("🔐 Login attempt for email: {}", req.getEmail());
@@ -180,10 +195,46 @@ public class AuthService {
                         org.springframework.http.HttpStatus.FORBIDDEN, "Account not active. Please contact admin.");
             }
 
+            // 📍 Geo-Restriction Check
+            if (user.isGeoRestrictionEnabled()) {
+                logger.info("📍 Geo-restriction enabled for user: {}", user.getEmail());
+
+                if (req.getLatitude() == null || req.getLongitude() == null) {
+                    logger.warn("❌ Geo-restricted login denied: No location provided for user: {}", user.getEmail());
+                    throw new org.springframework.web.server.ResponseStatusException(
+                            org.springframework.http.HttpStatus.FORBIDDEN,
+                            "Access Denied: You must be inside the office premises to login.");
+                }
+
+                if (user.getOfficeLatitude() == null || user.getOfficeLongitude() == null) {
+                    logger.warn("⚠️ Geo-restriction enabled but office location not set for user: {}", user.getEmail());
+                    // If admin enabled it but didn't set location, we might want to allow it OR
+                    // deny it.
+                    // Requirement says: "Assign office location (lat, lng)". If not set, we'll deny
+                    // as a safety measure.
+                    throw new org.springframework.web.server.ResponseStatusException(
+                            org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR,
+                            "Office location not configured. Please contact admin.");
+                }
+
+                double distance = calculateDistance(req.getLatitude(), req.getLongitude(),
+                        user.getOfficeLatitude(), user.getOfficeLongitude());
+
+                double radius = user.getGeoRadius() != null ? user.getGeoRadius() : 50.0;
+
+                logger.info("📍 User distance: {}m, Allowed radius: {}m", distance, radius);
+
+                if (distance > radius) {
+                    logger.warn("❌ Geo-restricted login denied: User is {}m away (max {}m) for user: {}", distance,
+                            radius, user.getEmail());
+                    throw new org.springframework.web.server.ResponseStatusException(
+                            org.springframework.http.HttpStatus.FORBIDDEN,
+                            "Access Denied: You must be inside the office premises to login.");
+                }
+            }
+
             // Record last login/IP for ALL users roles
-            user.setLastLogin(OffsetDateTime.now());
-            user.setLastIp(ip);
-            userRepository.save(user);
+            userRepository.updateLoginMetadata(user.getId(), OffsetDateTime.now(), ip);
 
             logger.info("✅ Generating tokens for user: {}", req.getEmail());
 
@@ -340,5 +391,24 @@ public class AuthService {
 
         refreshTokenRepository.save(r);
         return token;
+    }
+
+    /**
+     * Calculates the distance between two points on Earth using the Haversine
+     * formula.
+     * 
+     * @return distance in meters
+     */
+    private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+        if (lat1 == lat2 && lon1 == lon2)
+            return 0.0;
+        final int R = 6371; // Radius of the earth in km
+        double latDistance = Math.toRadians(lat2 - lat1);
+        double lonDistance = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                        * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c * 1000; // convert to meters
     }
 }

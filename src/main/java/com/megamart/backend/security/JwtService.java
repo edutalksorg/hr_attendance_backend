@@ -20,9 +20,13 @@ public class JwtService {
 
     // keep this secret in application.yml or environment for production
     private static final String SECRET_KEY = "3d37344554635ca43962cc00ccfb05379ac06ac938b94d03eeb3447f6ca025c9";
+    private final Key signingKey = Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8));
+    private final io.jsonwebtoken.JwtParser jwtParser = Jwts.parserBuilder()
+            .setSigningKey(signingKey)
+            .build();
 
     private Key getSignKey() {
-        return Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8));
+        return signingKey;
     }
 
     // private String toBase64(String hex) {
@@ -38,11 +42,7 @@ public class JwtService {
     }
 
     public Claims extractAllClaims(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(getSignKey())
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
+        return jwtParser.parseClaimsJws(token).getBody();
     }
 
     /**

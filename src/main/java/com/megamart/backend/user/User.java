@@ -66,6 +66,10 @@ public class User {
     @JoinColumn(name = "shift_id")
     private com.megamart.backend.shift.Shift shift;
 
+    @ManyToOne
+    @JoinColumn(name = "branch_id")
+    private com.megamart.backend.branch.Branch branch;
+
     // approvals
     @Column(name = "approved_by")
     private UUID approvedBy;
@@ -81,4 +85,26 @@ public class User {
 
     @Transient
     private String username; // Mapped from UserProfile or fullName
+
+    // Geo-restriction fields
+    @Column(name = "geo_restriction_enabled")
+    @Builder.Default
+    private Boolean geoRestrictionEnabled = false;
+
+    @Column(name = "office_latitude")
+    private Double officeLatitude;
+
+    @Column(name = "office_longitude")
+    private Double officeLongitude;
+
+    @Column(name = "geo_radius")
+    @Builder.Default
+    private Double geoRadius = 50.0;
+
+    @Column(name = "joining_date")
+    private java.time.LocalDate joiningDate;
+
+    public boolean isGeoRestrictionEnabled() {
+        return geoRestrictionEnabled != null && geoRestrictionEnabled;
+    }
 }

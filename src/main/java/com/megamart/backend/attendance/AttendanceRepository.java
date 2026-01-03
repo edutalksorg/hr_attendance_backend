@@ -20,4 +20,8 @@ public interface AttendanceRepository extends JpaRepository<Attendance, UUID> {
 
     @org.springframework.data.jpa.repository.Query("SELECT COUNT(DISTINCT a.userId) FROM Attendance a WHERE a.loginTime >= :start AND a.loginTime < :end")
     long countDistinctUserIdByLoginTimeBetween(java.time.OffsetDateTime start, java.time.OffsetDateTime end);
+
+    @org.springframework.data.jpa.repository.Query("SELECT COUNT(DISTINCT a.userId) FROM Attendance a WHERE a.loginTime >= :start AND a.loginTime < :end AND a.userId IN (SELECT u.id FROM User u WHERE u.branch.id = :branchId)")
+    long countDistinctUserIdByLoginTimeBetweenAndBranchId(java.time.OffsetDateTime start, java.time.OffsetDateTime end,
+            @org.springframework.data.repository.query.Param("branchId") UUID branchId);
 }
