@@ -21,22 +21,19 @@ public class DatabaseInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        // Create admin user if not exists
-        if (!userRepository.existsByEmail("megamart.dvst@gmail.com")) {
-            User admin = User.builder()
-                    .fullName("Admin")
-                    .email("megamart.dvst@gmail.com")
-                    .password(passwordEncoder.encode("edutalks@321"))
-                    .role(UserRole.ADMIN)
-                    .status(UserStatus.ACTIVE)
-                    .createdAt(OffsetDateTime.now())
-                    .updatedAt(OffsetDateTime.now())
-                    .build();
-            userRepository.save(admin);
-            logger.info("✅ Created ADMIN user: {}", admin.getEmail());
-        } else {
-            logger.info("ℹ️  ADMIN user already exists");
-        }
+        // Create or update admin user
+        User admin = userRepository.findByEmail("megamart.dvst@gmail.com").orElseGet(() -> User.builder()
+                .fullName("Admin")
+                .email("megamart.dvst@gmail.com")
+                .role(UserRole.ADMIN)
+                .status(UserStatus.ACTIVE)
+                .createdAt(OffsetDateTime.now())
+                .build());
+
+        admin.setPassword(passwordEncoder.encode("edutalks@321"));
+        admin.setUpdatedAt(OffsetDateTime.now());
+        userRepository.save(admin);
+        logger.info("✅ Ensured ADMIN user is created/updated: {}", admin.getEmail());
 
         // Create HR user if not exists
         if (!userRepository.existsByEmail("Prasanna122hr@gmail.com")) {

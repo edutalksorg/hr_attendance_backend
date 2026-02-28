@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: hr-attendance-db.c9y2cc6ecww1.ap-south-1.rds.amazonaws.com/hr-attendance
+    url: jdbc:postgresql://hr-attendance-db.c9y2cc6ecww1.ap-south-1.rds.amazonaws.com:5432/hr-attendance
     username: postgres
     password: hr-attendance-99999
     driver-class-name: org.postgresql.Driver
@@ -36,3 +36,4 @@ spring:
  
 server:
   port: 9090
+  address: 0.0.0.0

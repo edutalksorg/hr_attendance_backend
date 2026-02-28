@@ -455,6 +455,10 @@ public class AttendanceService {
             }
         }
 
+        if (req.getIpAddress() != null) {
+            a.setIpAddress(req.getIpAddress());
+        }
+
         return attendanceRepository.save(a);
     }
 
@@ -479,7 +483,7 @@ public class AttendanceService {
                 .logoutTime(req.getCheckOut())
                 .metadata(metaJson)
                 .createdAt(OffsetDateTime.now())
-                .ipAddress("Manual Entry")
+                .ipAddress(req.getIpAddress() != null ? req.getIpAddress() : "Manual Entry")
                 .build();
 
         return attendanceRepository.save(a);
